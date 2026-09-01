@@ -22,9 +22,9 @@ train operations, using AI/ML-based scheduling and optimization.
 Setup instructions coming soon.
 
 ## Team
-- Pushkar
-- Palak
+- Pushkar Mishra
+- Palak Srivastava
 - Nandani
-- Yuvraj
-- Kaif
-- Shanu
+- Yuvraj Singh
+- Kaif Ansari
+- Shanu Priya
