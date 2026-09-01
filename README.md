@@ -23,4 +23,7 @@ Setup instructions coming soon.
 
 ## Team
 - Pushkar
-- (Partner name)
+- Palak
+- Nandani
+- Yuvraj
+- Kaif
