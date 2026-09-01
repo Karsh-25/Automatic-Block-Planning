@@ -27,3 +27,4 @@ Setup instructions coming soon.
 - Nandani
 - Yuvraj
 - Kaif
+- Shanu
