@@ -1,0 +1,36 @@
+existing_block_id,linked_block_request_id,asset_id,section_id,station_code,block_type,start_time,end_time,duration_min,assigned_team,status,operational_priority,source
+EB-0001,BR-0046,AST-0063,SEC-019,MKU,Engineering Block,18:42,19:27,45,Signal Team,Confirmed,High,Existing/Committed
+EB-0002,BR-0033,AST-0049,SEC-025,LTRR,Maintenance Block,00:47,01:32,45,OHE Team,Confirmed,Normal,Existing/Committed
+EB-0003,BR-0015,AST-0122,SEC-042,HBD,Engineering Block,10:08,10:38,30,Track Maintenance Team,Active,Normal,Existing/Committed
+EB-0004,BR-0040,AST-0139,SEC-004,BNC,Engineering Block,08:24,10:24,120,Track Maintenance Team,Confirmed,Normal,Existing/Committed
+EB-0005,BR-0023,AST-0075,SEC-036,ARAG,Maintenance Block,03:33,04:48,75,Track Maintenance Team,Planned,Normal,Existing/Committed
+EB-0006,BR-0006,AST-0189,SEC-049,KGP,Maintenance Block,13:46,14:46,60,Bridge Inspection Team,Active,High,Existing/Committed
+EB-0007,BR-0003,AST-0166,SEC-003,JTJ,Engineering Block,20:04,22:04,120,OHE Team,Active,Normal,Existing/Committed
+EB-0008,BR-0023,AST-0075,SEC-036,ARAG,Maintenance Block,15:50,16:35,45,Track Maintenance Team,Planned,Normal,Existing/Committed
+EB-0009,,AST-0096,SEC-045,CNB,Maintenance Block,00:51,02:21,90,Signal Team,Active,Normal,Existing/Committed
+EB-0010,BR-0023,AST-0075,SEC-036,ARAG,Maintenance Block,02:19,04:19,120,Bridge Inspection Team,Confirmed,Normal,Existing/Committed
+EB-0011,BR-0004,AST-0027,SEC-026,PRLI,Maintenance Block,20:46,21:31,45,Track Maintenance Team,Confirmed,Normal,Existing/Committed
+EB-0012,BR-0013,AST-0177,SEC-015,JEUR,Maintenance Block,13:26,14:11,45,Signal Team,Active,High,Existing/Committed
+EB-0013,BR-0002,AST-0086,SEC-030,WR,Maintenance Block,00:16,02:16,120,Track Maintenance Team,Active,Normal,Existing/Committed
+EB-0014,BR-0041,AST-0012,SEC-015,JEUR,Planned Block,16:19,17:49,90,Bridge Inspection Team,Planned,Normal,Existing/Committed
+EB-0015,BR-0023,AST-0075,SEC-036,ARAG,Maintenance Block,05:23,06:53,90,Track Maintenance Team,Confirmed,Normal,Existing/Committed
+EB-0016,,AST-0187,SEC-002,BZA,Maintenance Block,08:16,08:46,30,OHE Team,Confirmed,Normal,Existing/Committed
+EB-0017,BR-0059,AST-0183,SEC-008,PC,Maintenance Block,00:08,00:53,45,Bridge Inspection Team,Active,Normal,Existing/Committed
+EB-0018,BR-0013,AST-0177,SEC-015,JEUR,Maintenance Block,10:35,11:20,45,Signal Team,Confirmed,High,Existing/Committed
+EB-0019,BR-0042,AST-0070,SEC-018,BDWD,Maintenance Block,07:51,08:36,45,Signal Team,Confirmed,Normal,Existing/Committed
+EB-0020,BR-0034,AST-0042,SEC-020,SEG,Planned Block,19:14,20:14,60,Track Maintenance Team,Active,Normal,Existing/Committed
+EB-0021,BR-0047,AST-0114,SEC-003,JTJ,Maintenance Block,01:13,01:58,45,Signal Team,Confirmed,Normal,Existing/Committed
+EB-0022,BR-0012,AST-0197,SEC-020,AK,Maintenance Block,09:17,10:17,60,Track Maintenance Team,Confirmed,High,Existing/Committed
+EB-0023,BR-0028,AST-0113,SEC-003,JTJ,Maintenance Block,11:58,13:58,120,Signal Team,Confirmed,Normal,Existing/Committed
+EB-0024,BR-0037,AST-0082,SEC-007,JL,Maintenance Block,18:56,19:26,30,Track Maintenance Team,Active,Normal,Existing/Committed
+EB-0025,BR-0010,AST-0077,SEC-033,DLGN,Engineering Block,05:22,06:22,60,Bridge Inspection Team,Active,Normal,Existing/Committed
+EB-0026,BR-0056,AST-0159,SEC-029,PLO,Maintenance Block,21:00,23:00,120,Bridge Inspection Team,Confirmed,High,Existing/Committed
+EB-0027,BR-0009,AST-0059,SEC-021,BD,Maintenance Block,21:45,23:00,75,Signal Team,Confirmed,Normal,Existing/Committed
+EB-0028,BR-0034,AST-0042,SEC-020,SEG,Maintenance Block,03:40,05:40,120,Track Maintenance Team,Active,Normal,Existing/Committed
+EB-0029,BR-0013,AST-0177,SEC-015,JEUR,Engineering Block,17:48,19:18,90,Bridge Inspection Team,Planned,Normal,Existing/Committed
+EB-0030,BR-0041,AST-0012,SEC-015,JEUR,Maintenance Block,17:18,18:48,90,Bridge Inspection Team,Active,High,Existing/Committed
+EB-0031,BR-0016,AST-0194,SEC-027,PAU,Maintenance Block,12:31,13:31,60,OHE Team,Active,Normal,Existing/Committed
+EB-0032,BR-0035,AST-0021,SEC-021,MZR,Maintenance Block,05:59,07:14,75,OHE Team,Confirmed,Normal,Existing/Committed
+EB-0033,BR-0046,AST-0063,SEC-019,MKU,Maintenance Block,00:53,01:38,45,Signal Team,Confirmed,High,Existing/Committed
+EB-0034,BR-0031,AST-0124,SEC-022,NAVI,Planned Block,14:46,16:46,120,Track Maintenance Team,Active,Normal,Existing/Committed
+EB-0035,BR-0036,AST-0141,SEC-022,SUR,Maintenance Block,10:09,12:09,120,Track Maintenance Team,Confirmed,Normal,Existing/Committed
