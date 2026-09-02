@@ -1,6 +1,14 @@
-pandas
+
 fastapi
 uvicorn[standard]
 pydantic
 ortools
 pytest
+
+
+# Dev 1 - Data Engineering / Dataset Preparation
+# Recommended Python: 3.11.x
+
+pandas==2.2.3
+numpy==2.1.3
+tabulate==0.9.0

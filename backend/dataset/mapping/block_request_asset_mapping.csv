@@ -1,0 +1,61 @@
+block_request_id,asset_id,section_id_request,station_code,maintenance_type,requested_duration_min,priority,preferred_start_time,time_flexibility,required_team,request_urgency,status,preferred_start_min,flexibility_min,earliest_start_min,latest_start_min,asset_type,section_id_asset,nearest_station_code,criticality,asset_risk_score,maintenance_priority
+BR-0001,AST-0157,SEC-014,KMN,OHE Inspection,75,Medium,18:45,Fixed,Bridge Inspection Team,Normal,Pending,1125,0,1125,1125,OHE,SEC-014,KMN,Medium,37.72,Medium
+BR-0002,AST-0086,SEC-030,WR,Track Inspection,45,High,11:15,±30 min,Track Maintenance Team,Normal,Pending,675,30,645,705,OHE,SEC-030,WR,Medium,70.23,High
+BR-0003,AST-0166,SEC-003,RU,Point Machine Maintenance,30,Low,05:15,Fixed,Bridge Inspection Team,Normal,Pending,315,0,315,315,Point Machine,SEC-003,RU,High,23.5,Low
+BR-0004,AST-0027,SEC-026,PRLI,Track Inspection,75,High,07:30,±30 min,Track Maintenance Team,Normal,Pending,450,30,420,480,Bridge,SEC-026,PRLI,High,61.14,High
+BR-0005,AST-0099,SEC-003,RU,Signal Maintenance,60,Critical,07:15,±30 min,Bridge Inspection Team,Normal,Pending,435,30,405,465,Bridge,SEC-003,RU,Medium,81.46,Critical
+BR-0006,AST-0189,SEC-049,KGP,Track Renewal,120,Medium,05:00,Fixed,Bridge Inspection Team,Normal,Pending,300,0,300,300,Point Machine,SEC-049,KGP,Medium,40.6,Medium
+BR-0007,AST-0090,SEC-043,HBJ,OHE Inspection,90,High,06:00,±30 min,Signal Team,Normal,Pending,360,30,330,390,Point Machine,SEC-043,HBJ,High,69.6,High
+BR-0008,AST-0126,SEC-041,GAR,Track Inspection,90,Medium,08:00,±15 min,Bridge Inspection Team,Normal,Pending,480,15,465,495,Track,SEC-041,GAR,Critical,49.75,Medium
+BR-0009,AST-0059,SEC-021,BD,Track Renewal,30,Medium,06:30,Fixed,Signal Team,Urgent,Pending,390,0,390,390,Bridge,SEC-021,BD,Low,43.06,Medium
+BR-0010,AST-0077,SEC-033,DLGN,Track Renewal,30,Low,13:00,±30 min,Bridge Inspection Team,Urgent,Pending,780,30,750,810,Signal,SEC-033,DLGN,Medium,31.57,Low
+BR-0011,AST-0189,SEC-049,KGP,Track Inspection,75,Medium,20:00,±30 min,Track Maintenance Team,Normal,Pending,1200,30,1170,1230,Point Machine,SEC-049,KGP,Medium,40.6,Medium
+BR-0012,AST-0197,SEC-020,AK,OHE Inspection,60,Medium,07:00,Fixed,Track Maintenance Team,Urgent,Pending,420,0,420,420,OHE,SEC-020,AK,Low,40.22,Medium
+BR-0013,AST-0177,SEC-015,JEUR,Signal Maintenance,45,Medium,14:45,±15 min,Signal Team,Urgent,Pending,885,15,870,900,Signal,SEC-015,JEUR,High,59.96,Medium
+BR-0014,AST-0164,SEC-045,CNB,Signal Maintenance,60,High,17:00,±30 min,Track Maintenance Team,Normal,Pending,1020,30,990,1050,OHE,SEC-045,CNB,High,65.4,High
+BR-0015,AST-0122,SEC-042,HBD,Bridge Inspection,30,High,18:30,±60 min,Track Maintenance Team,Normal,Pending,1110,60,1050,1170,Bridge,SEC-042,HBD,Low,76.65,High
+BR-0016,AST-0194,SEC-027,PAU,Rail Grinding,90,Low,18:30,Fixed,OHE Team,Urgent,Pending,1110,0,1110,1110,Point Machine,SEC-027,PAU,High,30.47,Low
+BR-0017,AST-0121,SEC-028,CND,Track Renewal,60,High,06:45,±30 min,Track Maintenance Team,Urgent,Pending,405,30,375,435,Level Crossing,SEC-028,CND,High,69.19,High
+BR-0018,AST-0166,SEC-003,RU,Track Inspection,120,Low,02:45,±15 min,Track Maintenance Team,Normal,Pending,165,15,150,180,Point Machine,SEC-003,RU,High,23.5,Low
+BR-0019,AST-0163,SEC-050,RPH,Point Machine Maintenance,90,Critical,10:00,±30 min,Track Maintenance Team,Urgent,Pending,600,30,570,630,Level Crossing,SEC-050,RPH,Medium,90.31,Critical
+BR-0020,AST-0127,SEC-010,DHI,Point Machine Maintenance,30,Medium,22:45,Fixed,Signal Team,Urgent,Pending,1365,0,1365,1365,Bridge,SEC-010,DHI,Medium,58.79,Medium
+BR-0021,AST-0164,SEC-045,CNB,Rail Grinding,30,High,02:00,±15 min,Signal Team,Normal,Pending,120,15,105,135,OHE,SEC-045,CNB,High,65.4,High
+BR-0022,AST-0098,SEC-049,HWH,Track Inspection,75,Medium,02:30,±30 min,OHE Team,Normal,Pending,150,30,120,180,Point Machine,SEC-049,HWH,Low,55.48,Medium
+BR-0023,AST-0075,SEC-036,ARAG,OHE Inspection,45,Medium,15:45,±30 min,Bridge Inspection Team,Normal,Pending,945,30,915,975,Bridge,SEC-036,ARAG,Medium,47.44,Medium
+BR-0024,AST-0152,SEC-014,KMN,Signal Maintenance,75,Medium,06:15,±30 min,Track Maintenance Team,Urgent,Pending,375,30,345,405,Signal,SEC-014,KMN,High,56.46,Medium
+BR-0025,AST-0193,SEC-001,BBS,Signal Maintenance,60,Low,14:45,Fixed,Signal Team,Normal,Pending,885,0,885,885,Track,SEC-001,BBS,Low,26.26,Low
+BR-0026,AST-0171,SEC-012,KSRA,Track Inspection,60,High,14:30,±30 min,Track Maintenance Team,Normal,Pending,870,30,840,900,Bridge,SEC-012,KSRA,Critical,65.45,High
+BR-0027,AST-0069,SEC-037,PUNE,OHE Inspection,75,High,07:15,±30 min,Track Maintenance Team,Normal,Pending,435,30,405,465,Point Machine,SEC-037,PUNE,Low,78.38,High
+BR-0028,AST-0113,SEC-003,JTJ,Track Renewal,90,Medium,12:15,±15 min,OHE Team,Urgent,Pending,735,15,720,750,OHE,SEC-003,JTJ,High,38.52,Medium
+BR-0029,AST-0004,SEC-002,BZA,Rail Grinding,60,High,13:15,±30 min,OHE Team,Normal,Pending,795,30,765,825,Point Machine,SEC-002,BZA,High,71.4,High
+BR-0030,AST-0059,SEC-021,BD,Rail Grinding,120,Medium,14:00,±15 min,Track Maintenance Team,Normal,Pending,840,15,825,855,Bridge,SEC-021,BD,Low,43.06,Medium
+BR-0031,AST-0124,SEC-022,NAVI,Signal Maintenance,120,High,04:30,±30 min,Track Maintenance Team,Urgent,Pending,270,30,240,300,Signal,SEC-022,NAVI,Medium,75.58,High
+BR-0032,AST-0077,SEC-033,DLGN,OHE Inspection,75,Low,14:15,Fixed,Bridge Inspection Team,Urgent,Pending,855,0,855,855,Signal,SEC-033,DLGN,Medium,31.57,Low
+BR-0033,AST-0049,SEC-025,LTRR,Track Renewal,90,Medium,12:15,±30 min,OHE Team,Normal,Pending,735,30,705,765,Point Machine,SEC-025,LTRR,High,43.05,Medium
+BR-0034,AST-0042,SEC-020,SEG,Track Inspection,90,Low,01:45,±15 min,Track Maintenance Team,Normal,Pending,105,15,90,120,Bridge,SEC-020,SEG,High,31.46,Low
+BR-0035,AST-0021,SEC-021,MZR,Signal Maintenance,75,High,11:30,±15 min,OHE Team,Normal,Pending,690,15,675,705,Level Crossing,SEC-021,MZR,Medium,70.94,High
+BR-0036,AST-0141,SEC-022,SUR,Point Machine Maintenance,60,Medium,14:15,±15 min,Track Maintenance Team,Normal,Pending,855,15,840,870,Track,SEC-022,SUR,High,51.33,Medium
+BR-0037,AST-0082,SEC-007,JL,Track Renewal,30,Low,07:15,±30 min,Track Maintenance Team,Normal,Pending,435,30,405,465,Bridge,SEC-007,JL,Medium,31.28,Low
+BR-0038,AST-0008,SEC-017,ANG,Track Renewal,90,Low,04:00,±30 min,OHE Team,Urgent,Pending,240,30,210,270,Level Crossing,SEC-017,ANG,Medium,24.7,Low
+BR-0039,AST-0117,SEC-043,HBJ,Signal Maintenance,120,Critical,01:30,±30 min,Signal Team,Normal,Pending,90,30,60,120,OHE,SEC-043,HBJ,High,95.3,Critical
+BR-0040,AST-0139,SEC-004,BNC,Signal Maintenance,90,Medium,06:45,±30 min,Track Maintenance Team,Urgent,Pending,405,30,375,435,OHE,SEC-004,BNC,High,50.39,Medium
+BR-0041,AST-0012,SEC-015,JEUR,Signal Maintenance,60,Low,05:00,±30 min,Bridge Inspection Team,Urgent,Pending,300,30,270,330,Bridge,SEC-015,JEUR,Low,32.09,Low
+BR-0042,AST-0070,SEC-018,BDWD,Track Inspection,75,Medium,22:15,±15 min,Signal Team,Urgent,Pending,1335,15,1320,1350,Track,SEC-018,BDWD,Low,58.9,Medium
+BR-0043,AST-0143,SEC-009,JMD,Track Inspection,30,Medium,10:45,±15 min,OHE Team,Urgent,Pending,645,15,630,660,Bridge,SEC-009,JMD,High,47.35,Medium
+BR-0044,AST-0082,SEC-007,JL,Track Renewal,75,Low,18:30,±60 min,Bridge Inspection Team,Urgent,Pending,1110,60,1050,1170,Bridge,SEC-007,JL,Medium,31.28,Low
+BR-0045,AST-0072,SEC-043,BINA,Track Inspection,30,Medium,19:00,±30 min,Bridge Inspection Team,Normal,Pending,1140,30,1110,1170,Bridge,SEC-043,BINA,High,35.37,Medium
+BR-0046,AST-0063,SEC-019,MKU,Bridge Inspection,60,Low,05:30,Fixed,Signal Team,Normal,Pending,330,0,330,330,Signal,SEC-019,MKU,High,31.08,Low
+BR-0047,AST-0114,SEC-003,JTJ,OHE Inspection,120,Medium,21:00,±30 min,Signal Team,Normal,Pending,1260,30,1230,1290,Bridge,SEC-003,JTJ,Medium,39.46,Medium
+BR-0048,AST-0126,SEC-041,GAR,Track Renewal,75,Medium,20:45,±60 min,Bridge Inspection Team,Normal,Pending,1245,60,1185,1305,Track,SEC-041,GAR,Critical,49.75,Medium
+BR-0049,AST-0047,SEC-017,ANG,Track Inspection,45,Critical,02:30,±30 min,Bridge Inspection Team,Normal,Pending,150,30,120,180,Bridge,SEC-017,ANG,Critical,80.11,Critical
+BR-0050,AST-0135,SEC-001,BBS,Track Inspection,75,Medium,02:00,±60 min,OHE Team,Normal,Pending,120,60,60,180,Signal,SEC-001,BBS,High,42.78,Medium
+BR-0051,AST-0136,SEC-021,BD,Signal Maintenance,30,Medium,04:45,±30 min,OHE Team,Normal,Pending,285,30,255,315,Signal,SEC-021,BD,Critical,53.64,Medium
+BR-0052,AST-0104,SEC-038,HD,Signal Maintenance,45,High,22:00,Fixed,Signal Team,Normal,Pending,1320,0,1320,1320,OHE,SEC-038,HD,Medium,75.24,High
+BR-0053,AST-0075,SEC-036,ARAG,Point Machine Maintenance,60,Medium,02:45,±30 min,Track Maintenance Team,Normal,Pending,165,30,135,195,Bridge,SEC-036,ARAG,Medium,47.44,Medium
+BR-0054,AST-0045,SEC-030,NGP,Track Inspection,120,High,18:30,±15 min,OHE Team,Urgent,Pending,1110,15,1095,1125,Signal,SEC-030,NGP,High,72.23,High
+BR-0055,AST-0124,SEC-022,NAVI,Rail Grinding,75,High,15:15,±15 min,Track Maintenance Team,Normal,Pending,915,15,900,930,Signal,SEC-022,NAVI,Medium,75.58,High
+BR-0056,AST-0159,SEC-029,PLO,OHE Inspection,60,Medium,01:30,±60 min,Bridge Inspection Team,Normal,Pending,90,60,30,150,Signal,SEC-029,PLO,High,46.95,Medium
+BR-0057,AST-0027,SEC-026,PRLI,Track Inspection,90,High,21:00,±60 min,Track Maintenance Team,Normal,Pending,1260,60,1200,1320,Bridge,SEC-026,PRLI,High,61.14,High
+BR-0058,AST-0013,SEC-002,VSKP,Track Inspection,90,Medium,20:30,±30 min,Signal Team,Normal,Pending,1230,30,1200,1260,Level Crossing,SEC-002,VSKP,Critical,48.79,Medium
+BR-0059,AST-0183,SEC-008,PC,Signal Maintenance,120,High,22:45,±30 min,Bridge Inspection Team,Normal,Pending,1365,30,1335,1395,OHE,SEC-008,PC,High,60.59,High
+BR-0060,AST-0148,SEC-033,KVK,Signal Maintenance,45,Low,17:15,±30 min,Track Maintenance Team,Urgent,Pending,1035,30,1005,1065,OHE,SEC-033,KVK,High,32.82,Low
