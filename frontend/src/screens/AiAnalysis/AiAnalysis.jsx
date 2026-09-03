@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Cpu,
   Train,
@@ -11,6 +11,137 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PageShell, HeroBanner, cn } from "../../components/layout/Layout";
+
+// ============================================================
+// BACKEND SHAPE -> UI DERIVATION
+//
+// Step 3 ("AI Analyses the Network") is a PRE-OPTIMIZATION baseline: for
+// every block request, check its *preferred_start_time* window only (no
+// candidate search, no optimizer) and report what would happen if every
+// request just got its preferred slot. This is what block_optimizer.py's
+// before/after comparison later calls the "Before AI (Current Plan)"
+// numbers -- Step 4 is where the optimizer actually runs and improves on
+// this baseline. Step 3 must NOT show optimized-plan numbers.
+//
+// This baseline comes from two existing backend functions, called once
+// per request:
+//
+//   1. constraint_engine.evaluate_candidate(preferred_candidate, request, ctx)
+//      -> {
+//           request_id, start_time, end_time, duration_min,
+//           is_preferred: true, feasible: bool,
+//           conflicts: [
+//             { type: "TRAIN", train_id, train_name, overlap_minutes },
+//             { type: "EXISTING_BLOCK", existing_block_id, block_type, overlap_minutes },
+//             { type: "RESOURCE", existing_block_id, team, overlap_minutes },
+//             ...
+//           ]
+//         }
+//
+//   2. ml.inference.predict_risk(asset)
+//      -> { predicted_risk_score, predicted_priority: "Low"|"Medium"|"High"|"Critical", borderline, confidence_note }
+//
+// `analysis.evaluations[i]` below is one request's evaluate_candidate()
+// result plus its request/asset context and predict_risk() output
+// attached. There is no SimulationReport / optimized-plan data here --
+// that belongs to the Step 4 "Generate Optimal Plan" screen, not this one.
+//
+// analysis shape:
+// {
+//   evaluations: [{
+//     block_request_id, asset_id, section_id, station_code,
+//     maintenance_type, required_team, priority, preferred_start_time,
+//     feasible, conflicts: [...],            // from evaluate_candidate()
+//     asset_risk: { predicted_risk_score, predicted_priority, borderline }, // from predict_risk()
+//   }],
+// }
+// ============================================================
+
+const PRIORITY_RANK = { Low: 0, Medium: 1, High: 2, Critical: 3 };
+
+function flattenConflicts(analysis) {
+  const rows = [];
+  for (const ev of analysis.evaluations || []) {
+    for (const c of ev.conflicts || []) {
+      rows.push({ evaluation: ev, conflict: c });
+    }
+  }
+  return rows;
+}
+
+function deriveStats(analysis) {
+  const allConflicts = flattenConflicts(analysis);
+  const trainConflicts = allConflicts.filter((r) => r.conflict.type === "TRAIN");
+
+  const affectedTrainIds = new Set(trainConflicts.map((r) => r.conflict.train_id));
+  const predictedDelayMin = trainConflicts.reduce(
+    (sum, r) => sum + (r.conflict.overlap_minutes || 0),
+    0
+  );
+
+  const priorities = (analysis.evaluations || [])
+    .map((ev) => ev.asset_risk?.predicted_priority)
+    .filter(Boolean);
+  const dominantPriority = priorities.length
+    ? priorities.reduce((worst, p) =>
+        PRIORITY_RANK[p] > PRIORITY_RANK[worst] ? p : worst
+      )
+    : "—";
+
+  return {
+    affectedTrainCount: affectedTrainIds.size,
+    conflictsDetected: allConflicts.length,
+    dominantPriority,
+    predictedDelayMin,
+  };
+}
+
+/** Top sections by total predicted delay (TRAIN conflicts only). */
+function deriveTopSections(analysis, limit = 3) {
+  const bySection = new Map();
+
+  for (const ev of analysis.evaluations || []) {
+    const trainConflicts = (ev.conflicts || []).filter((c) => c.type === "TRAIN");
+    if (trainConflicts.length === 0) continue;
+    const delay = trainConflicts.reduce((sum, c) => sum + (c.overlap_minutes || 0), 0);
+    const key = `${ev.section_id} (${ev.station_code})`;
+    bySection.set(key, (bySection.get(key) || 0) + delay);
+  }
+
+  return [...bySection.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([label, delayMin]) => ({ label, delayMin }));
+}
+
+/** Individual TRAIN conflicts, sorted by predicted delay. */
+function deriveTopConflicts(analysis, limit = 5) {
+  const rows = flattenConflicts(analysis)
+    .filter((r) => r.conflict.type === "TRAIN")
+    .map(({ evaluation, conflict }) => ({
+      id: `${evaluation.block_request_id}-${conflict.train_id}`,
+      train: `${conflict.train_id} — ${conflict.train_name}`,
+      detail: `vs ${evaluation.maintenance_type} (${evaluation.section_id}/${evaluation.station_code})`,
+      delay: `${conflict.overlap_minutes} min`,
+      delayMin: conflict.overlap_minutes || 0,
+    }));
+
+  return rows.sort((a, b) => b.delayMin - a.delayMin).slice(0, limit);
+}
+
+function deriveSummary(analysis) {
+  const stats = deriveStats(analysis);
+  const total = (analysis.evaluations || []).length;
+  const infeasible = (analysis.evaluations || []).filter((ev) => !ev.feasible).length;
+
+  return (
+    `Checked ${total} block request${total === 1 ? "" : "s"} at their preferred time, ` +
+    `before any optimization. ${stats.conflictsDetected} conflict${stats.conflictsDetected === 1 ? "" : "s"} ` +
+    `found across ${infeasible} request${infeasible === 1 ? "" : "s"}, affecting ` +
+    `${stats.affectedTrainCount} train${stats.affectedTrainCount === 1 ? "" : "s"} with an estimated ` +
+    `${stats.predictedDelayMin} min of delay if scheduled as-is. Highest asset priority involved: ${stats.dominantPriority}.`
+  );
+}
 
 // ============================================================
 // STAT CARD
@@ -47,72 +178,37 @@ function StatCard({ icon: Icon, theme, label, value, sub, onViewDetails }) {
 }
 
 // ============================================================
-// NETWORK IMPACT DIAGRAM
+// TOP IMPACTED SECTIONS
+//
+// Ranked by total predicted delay (preferred-time TRAIN conflicts,
+// grouped by section_id/station_code) -- real pre-optimization numbers,
+// not an invented network topology.
 // ============================================================
 
-function NetworkImpactOverview({ sections }) {
-  // sections: { a: "Section A", b: "Section B", c: "Section C" }
+function TopImpactedSections({ sections }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5">
-      <div className="text-sm font-semibold text-slate-700 mb-4">Network Impact Overview</div>
+      <div className="text-sm font-semibold text-slate-700 mb-4">Top Impacted Sections</div>
 
-      <div className="relative flex flex-col items-center gap-6 py-4">
-        {/* A --- conflict --- C */}
-        <div className="flex items-center w-full justify-between">
-          <SectionNode label={sections.a} />
-          <div className="flex-1 flex items-center justify-center relative">
-            <div className="h-px w-full bg-red-300" />
-            <div className="absolute w-6 h-6 rounded-full bg-red-100 text-red-600 flex items-center justify-center border-2 border-white shadow-sm">
-              <AlertTriangle size={12} />
+      {sections.length === 0 ? (
+        <div className="text-xs text-slate-400 py-6 text-center">
+          No delay impact recorded for any section.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sections.map((s) => (
+            <div key={s.label} className="flex items-center gap-3">
+              <ShieldAlert size={14} className="text-amber-500 shrink-0" />
+              <span className="text-sm text-slate-700 font-medium flex-1 truncate">
+                {s.label}
+              </span>
+              <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-1 rounded-md shrink-0">
+                {s.delayMin} min
+              </span>
             </div>
-          </div>
-          <SectionNode label={sections.c} />
+          ))}
         </div>
-
-        {/* connecting line down to B */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 flex flex-col items-center">
-          <div className="w-px h-6 bg-amber-300" />
-        </div>
-
-        <div className="flex items-center justify-center relative w-full">
-          <div className="h-px w-1/3 bg-amber-300" />
-          <div className="absolute w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center border-2 border-white shadow-sm">
-            <ShieldAlert size={12} />
-          </div>
-          <SectionNode label={sections.b} small />
-          <div className="h-px w-1/3 bg-slate-200 border-dashed" style={{ borderTop: "1px dashed #cbd5e1", background: "none" }} />
-        </div>
-      </div>
-
-      {/* LEGEND */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 pt-3 border-t border-slate-100 text-[11px] text-slate-500">
-        <LegendItem color="bg-red-400" label="Maintenance Request" />
-        <LegendItem color="bg-amber-400" label="Signal Maintenance" />
-        <LegendItem color="bg-slate-300" label="Other Sections" dashed />
-        <LegendItem color="bg-blue-300" label="Train Route" dashed />
-      </div>
-    </div>
-  );
-}
-
-function SectionNode({ label, small }) {
-  return (
-    <div
-      className={cn(
-        "shrink-0 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 font-medium text-center z-10",
-        small ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"
       )}
-    >
-      {label}
-    </div>
-  );
-}
-
-function LegendItem({ color, label, dashed }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className={cn("inline-block w-3 h-0.5", dashed ? "border-t border-dashed border-current opacity-60" : color)} />
-      <span>{label}</span>
     </div>
   );
 }
@@ -132,23 +228,29 @@ function TopConflicts({ conflicts }) {
       </div>
 
       <div className="space-y-3">
-        {conflicts.map((c, i) => (
-          <div key={c.id} className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-semibold flex items-center justify-center shrink-0">
-                {i + 1}
-              </span>
-              <AlertTriangle size={14} className="text-red-500 shrink-0" />
-              <div className="min-w-0">
-                <div className="text-sm text-slate-700 font-medium truncate">{c.train}</div>
-                <div className="text-xs text-slate-400 truncate">{c.detail}</div>
-              </div>
-            </div>
-            <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-md shrink-0">
-              {c.delay}
-            </span>
+        {conflicts.length === 0 ? (
+          <div className="text-xs text-slate-400 py-6 text-center">
+            No train conflicts on the current plan.
           </div>
-        ))}
+        ) : (
+          conflicts.map((c, i) => (
+            <div key={c.id} className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-500 text-[11px] font-semibold flex items-center justify-center shrink-0">
+                  {i + 1}
+                </span>
+                <AlertTriangle size={14} className="text-red-500 shrink-0" />
+                <div className="min-w-0">
+                  <div className="text-sm text-slate-700 font-medium truncate">{c.train}</div>
+                  <div className="text-xs text-slate-400 truncate">{c.detail}</div>
+                </div>
+              </div>
+              <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-md shrink-0">
+                {c.delay}
+              </span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -221,17 +323,11 @@ function PreAnalysisState({ onRun, isLoading }) {
  *   completedKeys?: string[],
  * }} props
  *
- * `analysis` shape expected once available (from the backend / ML + constraint
- * engine, per Developer 1 & 2's pipeline):
- * {
- *   affectedTrains: number,
- *   conflictsDetected: number,
- *   assetPriority: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
- *   predictedDelayMin: number,
- *   sections: { a: string, b: string, c: string },
- *   topConflicts: [{ id, train, detail, delay }],
- *   summary: string,
- * }
+ * `analysis` is the Step 3 pre-optimization baseline (see the
+ * "BACKEND SHAPE -> UI DERIVATION" block at the top of this file for the
+ * exact fields, sourced from constraint_engine.evaluate_candidate() +
+ * ml.inference.predict_risk()). This is NOT the optimized-plan output --
+ * that belongs to the Step 4 "Generate Optimal Plan" screen.
  */
 export default function AiAnalysis({
   requests = [],
@@ -258,6 +354,13 @@ export default function AiAnalysis({
 
   const result = analysis || localAnalysis;
   const canContinue = Boolean(result);
+
+  // Derive all UI values from the raw backend report. Memoized so we're
+  // not re-deriving on every render while other state (isLoading) changes.
+  const stats = useMemo(() => (result ? deriveStats(result) : null), [result]);
+  const topSections = useMemo(() => (result ? deriveTopSections(result) : []), [result]);
+  const topConflicts = useMemo(() => (result ? deriveTopConflicts(result) : []), [result]);
+  const summary = useMemo(() => (result ? deriveSummary(result) : ""), [result]);
 
   return (
     <PageShell
@@ -307,40 +410,40 @@ export default function AiAnalysis({
               icon={Train}
               theme="blue"
               label="Affected Trains"
-              value={result.affectedTrains}
+              value={stats.affectedTrainCount}
               sub="Trains will be impacted"
             />
             <StatCard
               icon={AlertTriangle}
               theme="red"
               label="Conflicts Detected"
-              value={result.conflictsDetected}
+              value={stats.conflictsDetected}
               sub="Potential conflicts found"
             />
             <StatCard
               icon={ShieldAlert}
               theme="amber"
               label="Asset Priority"
-              value={result.assetPriority}
-              sub="Priority level involved"
+              value={stats.dominantPriority}
+              sub="Highest priority level involved"
             />
             <StatCard
               icon={Clock}
               theme="emerald"
               label="Predicted Delay"
-              value={`${result.predictedDelayMin} min`}
-              sub="Total predicted delay across network"
+              value={`${stats.predictedDelayMin} min`}
+              sub="Estimated delay if scheduled as-is"
             />
           </div>
 
-          {/* DIAGRAM + CONFLICTS */}
+          {/* SECTIONS + CONFLICTS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-            <NetworkImpactOverview sections={result.sections} />
-            <TopConflicts conflicts={result.topConflicts} />
+            <TopImpactedSections sections={topSections} />
+            <TopConflicts conflicts={topConflicts} />
           </div>
 
           {/* SUMMARY */}
-          <AnalysisSummary text={result.summary} />
+          <AnalysisSummary text={summary} />
         </>
       )}
     </PageShell>

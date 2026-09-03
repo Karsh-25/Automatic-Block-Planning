@@ -15,25 +15,83 @@ export default function App() {
     setCompletedSteps((prev) => (prev.includes(key) ? prev : [...prev, key]));
   };
 
-  // Placeholder until Developer 1/2's real API is wired in. Swap this
-  // for an actual fetch("/api/analyze", { body: requests }) call —
-  // the shape returned must match what AiAnalysis.jsx expects (see the
-  // JSDoc on that component for the exact fields).
+  // Placeholder aggregation until Phase 5 (the FastAPI layer) exists.
+  // Once it's up, replace this with a real call — e.g.
+  //   const raw = await fetch("/api/analyze", { method: "POST", body: JSON.stringify(requests) }).then(r => r.json())
+  // where `raw` is a { [request_id]: candidateEval[] } map, i.e. exactly
+  // what evaluate_candidates_for_request() returns per request, and then
+  // run the SAME aggregation below over the real data instead of this
+  // fabricated sample. The shape below matches evaluate_candidate()'s
+  // real fields exactly (see constraint_engine.py / test_constraint_engine.py) —
+  // only the numbers are placeholders.
   const runAnalysis = async (blockRequests) => {
-    await new Promise((r) => setTimeout(r, 900)); // simulated processing time
-    return {
-      affectedTrains: 18,
-      conflictsDetected: 5,
-      assetPriority: "HIGH",
-      predictedDelayMin: 42,
-      sections: { a: "Section A", b: "Section B", c: "Section C" },
-      topConflicts: [
-        { id: 1, train: "Train 12951 (NDLS – BCT)", detail: "vs Track Maintenance (Section A)", delay: "22 min" },
-        { id: 2, train: "Train 12008 (BCT – NDLS)", detail: "vs Signal Maintenance (Section B)", delay: "12 min" },
-        { id: 3, train: "Train 22119 (BSB – BCT)", detail: "vs Track Maintenance (Section A)", delay: "8 min" },
+    await new Promise((r) => setTimeout(r, 900));
+
+    // Fabricated per-candidate results, same shape evaluate_candidate() returns.
+    const sampleRaw = {
+      "BR-001": [
+        {
+          request_id: "BR-001", start_time: "02:10", end_time: "02:55",
+          duration_min: 45, is_preferred: true, feasible: false,
+          conflicts: [
+            { type: "TRAIN", train_id: "12951", train_name: "Mumbai Rajdhani", overlap_minutes: 22 },
+          ],
+        },
+        {
+          request_id: "BR-001", start_time: "03:20", end_time: "04:05",
+          duration_min: 45, is_preferred: false, feasible: true,
+          conflicts: [],
+        },
       ],
+      "BR-002": [
+        {
+          request_id: "BR-002", start_time: "01:00", end_time: "01:30",
+          duration_min: 30, is_preferred: true, feasible: false,
+          conflicts: [
+            { type: "EXISTING_BLOCK", existing_block_id: "EB-014", block_type: "Signal Check", overlap_minutes: 12 },
+            { type: "RESOURCE", team: "Signal Team", existing_block_id: "EB-014", overlap_minutes: 12 },
+          ],
+        },
+      ],
+      "BR-003": [
+        {
+          request_id: "BR-003", start_time: "23:50", end_time: "00:15",
+          duration_min: 25, is_preferred: true, feasible: false,
+          conflicts: [
+            { type: "TRAIN", train_id: "22119", train_name: "Tejas Express", overlap_minutes: 8 },
+          ],
+        },
+      ],
+    };
+
+    // --- Aggregation: this part is real logic, safe to keep once
+    // sampleRaw is replaced by the actual API response. ---
+    const allCandidates = Object.values(sampleRaw).flat();
+    const allConflicts = allCandidates.flatMap((c) =>
+      c.conflicts.map((conf) => ({ ...conf, requestId: c.request_id }))
+    );
+
+    const breakdownMap = {};
+    for (const c of allConflicts) {
+      breakdownMap[c.type] = (breakdownMap[c.type] || 0) + 1;
+    }
+
+    const topConflicts = [...allConflicts]
+      .sort((a, b) => (b.overlap_minutes || 0) - (a.overlap_minutes || 0))
+      .slice(0, 5);
+
+    return {
+      requestsAnalyzed: Object.keys(sampleRaw).length,
+      candidatesEvaluated: allCandidates.length,
+      feasibleCount: allCandidates.filter((c) => c.feasible).length,
+      conflictsDetected: allConflicts.length,
+      conflictBreakdown: Object.entries(breakdownMap).map(([type, count]) => ({ type, count })),
+      topConflicts,
       summary:
-        "AI has analyzed all inputs including train schedules, asset health, block requests and operational constraints to identify impacts, conflicts, asset priorities and delay predictions.",
+        `Checked ${allCandidates.length} candidate window(s) across ${Object.keys(sampleRaw).length} request(s) ` +
+        `against trains, existing blocks and resource availability. ` +
+        `${allCandidates.filter((c) => c.feasible).length} feasible window(s) found, ` +
+        `${allConflicts.length} conflict(s) detected.`,
     };
   };
 

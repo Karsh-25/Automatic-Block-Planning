@@ -14,6 +14,8 @@ import {
   cn,
 } from "../../components/layout/Layout";
 
+import { resolveAssetLocation } from "../../config/assetStationMap";
+
 // ============================================================
 // CONFIG
 // ============================================================
@@ -69,15 +71,18 @@ const PRIORITY_STYLES = {
 //
 // Backend/default fields:
 // - block_request_id -> generated automatically
-// - section_id       -> will be resolved from asset
-// - station_code     -> will be resolved from asset
+// - section_id       -> resolved from asset via assetStationMap
+// - station_code     -> resolved from asset via assetStationMap
 // - status           -> automatically "Pending"
 //
-// Section and Station are intentionally NOT requested from
-// the user anymore.
+// Section and Station are intentionally NOT typed by the user directly —
+// they're derived from Asset ID (see resolveAssetLocation) and shown
+// read-only, since the backend keys every conflict check off of
+// request.section_id / request.station_code (constraint_engine.py).
 const EMPTY_FORM = {
   activity: ACTIVITY_TYPES[0],
   assetId: "",
+  location: null, // { sectionId, stationCode } resolved from assetId
   duration: "",
   priority: "High",
   preferredStartTime: "",
@@ -193,18 +198,74 @@ function RequestForm({
             className={inputClass}
             placeholder="e.g. AST-0157"
             value={form.assetId}
-            onChange={(e) =>
+            onChange={(e) => {
+              const assetId = e.target.value.toUpperCase();
               setForm((f) => ({
                 ...f,
-                assetId: e.target.value.toUpperCase(),
-              }))
-            }
+                assetId,
+                location: resolveAssetLocation(assetId),
+              }));
+            }}
           />
 
-          <div className="text-[10px] text-slate-400 mt-1">
-            Section and station are determined from the asset.
-          </div>
+          {form.assetId.trim() === "" ? (
+            <div className="text-[10px] text-slate-400 mt-1">
+              Section and station are determined from the asset.
+            </div>
+          ) : form.location ? (
+            <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
+              <span className="font-medium text-slate-600">
+                {form.location.sectionId}
+              </span>
+              <span className="text-slate-300">/</span>
+              <span className="font-medium text-slate-600">
+                {form.location.stationCode}
+              </span>
+            </div>
+          ) : (
+            <div className="text-[10px] text-red-500 mt-1 flex items-center gap-1">
+              <AlertCircle size={10} />
+              Unknown asset — no section/station mapping found.
+            </div>
+          )}
         </div>
+
+        {/* Section / Station (read-only, resolved from Asset ID) */}
+        <div>
+          <label className={labelClass}>
+            Section ID
+          </label>
+
+          <input
+            className={cn(inputClass, "bg-slate-50 text-slate-500")}
+            value={form.location?.sectionId || ""}
+            placeholder="Auto from asset"
+            disabled
+            readOnly
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>
+            Station Code
+          </label>
+
+          <input
+            className={cn(inputClass, "bg-slate-50 text-slate-500")}
+            value={form.location?.stationCode || ""}
+            placeholder="Auto from asset"
+            disabled
+            readOnly
+          />
+        </div>
+
+      </div>
+
+      {/* ======================================================
+          ROW 2
+          ====================================================== */}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start mb-4">
 
         {/* Duration */}
         <div>
@@ -245,13 +306,6 @@ function RequestForm({
             }
           />
         </div>
-      </div>
-
-      {/* ======================================================
-          ROW 2
-          ====================================================== */}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
 
         {/* Priority */}
         <div>
@@ -288,6 +342,13 @@ function RequestForm({
             options={FLEXIBILITY_OPTIONS}
           />
         </div>
+      </div>
+
+      {/* ======================================================
+          ROW 3
+          ====================================================== */}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
 
         {/* Required Team */}
         <div>
@@ -386,17 +447,18 @@ function RequestTable({
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
 
-      <table className="w-full min-w-[820px] text-sm table-fixed">
+      <table className="w-full min-w-[940px] text-sm table-fixed">
 
         <colgroup>
-          <col className="w-[10%]" />
-          <col className="w-[18%]" />
+          <col className="w-[8%]" />
           <col className="w-[14%]" />
           <col className="w-[11%]" />
           <col className="w-[12%]" />
-          <col className="w-[12%]" />
-          <col className="w-[11%]" />
-          <col className="w-[12%]" />
+          <col className="w-[10%]" />
+          <col className="w-[10%]" />
+          <col className="w-[10%]" />
+          <col className="w-[9%]" />
+          <col className="w-[16%]" />
         </colgroup>
 
         <thead>
@@ -412,6 +474,10 @@ function RequestTable({
 
             <th className="px-4 py-3 font-medium">
               Asset
+            </th>
+
+            <th className="px-4 py-3 font-medium">
+              Section / Station
             </th>
 
             <th className="px-4 py-3 font-medium">
@@ -454,6 +520,12 @@ function RequestTable({
 
               <td className="px-4 py-3 align-middle text-slate-600 truncate">
                 {r.assetId}
+              </td>
+
+              <td className="px-4 py-3 align-middle text-slate-600 truncate">
+                {r.section_id && r.station_code
+                  ? `${r.section_id} / ${r.station_code}`
+                  : "—"}
               </td>
 
               <td className="px-4 py-3 align-middle text-slate-600 truncate">
@@ -542,6 +614,10 @@ export default function BlockRequest({
       return "Asset ID is required.";
     }
 
+    if (!form.location) {
+      return "Asset ID not recognized — can't resolve section/station.";
+    }
+
     if (
       !form.duration ||
       Number(form.duration) <= 0
@@ -589,6 +665,11 @@ export default function BlockRequest({
                 ...form,
                 duration: Number(form.duration),
 
+                // Backend-named fields (candidate_generator.py /
+                // constraint_engine.py BlockRequest schema).
+                section_id: form.location?.sectionId || "",
+                station_code: form.location?.stationCode || "",
+
                 // Always keep status as Pending.
                 status: "Pending",
               }
@@ -611,14 +692,14 @@ export default function BlockRequest({
 
           duration: Number(form.duration),
 
+          // Backend-named fields (candidate_generator.py /
+          // constraint_engine.py BlockRequest schema) — resolved from
+          // the asset via assetStationMap, not typed by the user.
+          section_id: form.location?.sectionId || "",
+          station_code: form.location?.stationCode || "",
+
           // Backend/default field.
           status: "Pending",
-
-          // These are intentionally empty for now.
-          // They will be resolved from the asset mapping
-          // when the frontend is connected to the backend.
-          section: "",
-          stationCode: "",
         },
       ]);
     }
@@ -645,6 +726,14 @@ export default function BlockRequest({
 
       assetId:
         target.assetId || "",
+
+      location:
+        target.section_id && target.station_code
+          ? {
+              sectionId: target.section_id,
+              stationCode: target.station_code,
+            }
+          : resolveAssetLocation(target.assetId || ""),
 
       duration:
         target.duration !== undefined
