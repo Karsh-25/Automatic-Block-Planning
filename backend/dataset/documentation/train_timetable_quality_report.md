@@ -9,10 +9,7 @@
 
 ## Missing Values
 
-| Column | Missing Count |
-|---|---:|
-| arrival_min | 69006 |
-| departure_min | 69006 |
+No missing values found.
 
 ## Duplicate Records
 
@@ -24,9 +21,9 @@ Exact duplicate rows: 0
 |---|---:|
 | islno | 0 |
 | Distance | 0 |
-| Arrival time | 69006 |
-| Departure time | 69006 |
-| departure_before_arrival | 0 |
+| Arrival time | 0 |
+| Departure time | 0 |
+| departure_before_arrival | 2998 |
 
 ## Station Information
 
@@ -34,16 +31,16 @@ Exact duplicate rows: 0
 
 ## Numeric Statistics
 
-|       |    islno |   Distance |
-|:------|---------:|-----------:|
-| count | 69006    |   69006    |
-| mean  |    18.03 |     647.8  |
-| std   |    16.01 |     643.42 |
-| min   |     1    |       0    |
-| 25%   |     7    |     173    |
-| 50%   |    14    |     432    |
-| 75%   |    24    |     931    |
-| max   |   120    |    4273    |
+|       |    islno |   Distance |   arrival_min |   departure_min |
+|:------|---------:|-----------:|--------------:|----------------:|
+| count | 69006    |   69006    |      69006    |        69006    |
+| mean  |    18.03 |     647.8  |        684.23 |          691.76 |
+| std   |    16.01 |     643.42 |        436.97 |          439.35 |
+| min   |     1    |       0    |          0    |            0    |
+| 25%   |     7    |     173    |        305    |          310    |
+| 50%   |    14    |     432    |        660    |          673    |
+| 75%   |    24    |     931    |       1080    |         1090    |
+| max   |   120    |    4273    |       1439    |         1439    |
 
 ## Data Preparation Notes
 

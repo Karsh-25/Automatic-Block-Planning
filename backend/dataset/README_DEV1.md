@@ -56,11 +56,12 @@ backend/
 │   │   ├── train_timetable_data_dictionary.md
 │   │   └── train_timetable_quality_report.md
 │   │
-│   ├── prepare_data.py
-│   ├── prepare_block_request.py
-│   ├── prepare_existing_blocks.py
-│   ├── prepare_train_timetable.py
-│   └── validate_and_create_mappings.py
+|   ├── scripts/
+│       ├── prepare_data.py
+│       ├── prepare_block_request.py
+│       ├── prepare_existing_blocks.py
+│       ├── prepare_train_timetable.py
+│       └── validate_and_create_mappings.py
 │
 ├── requirements.txt
 └── README.md
