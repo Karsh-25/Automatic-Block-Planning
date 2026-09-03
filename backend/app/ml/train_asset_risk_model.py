@@ -93,7 +93,7 @@ def bucket_priority(score):
 pred_priority = pd.Series(y_pred, index=X_test.index).apply(bucket_priority)
 true_priority = df.loc[X_test.index, "maintenance_priority"]
 
-bucket_accuracy = (pred_priority.values == true_priority.values).mean()
+bucket_accuracy = (pred_priority == true_priority).mean()
 
 # ---------- Feature importance ----------
 feature_names = (
