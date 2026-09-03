@@ -4,7 +4,8 @@ uvicorn[standard]
 pydantic
 ortools
 pytest
-
+joblib
+scikit-learn
 
 # Dev 1 - Data Engineering / Dataset Preparation
 # Recommended Python: 3.11.x
