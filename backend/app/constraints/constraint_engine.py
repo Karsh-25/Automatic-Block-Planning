@@ -68,7 +68,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from candidate_generator import BlockRequest, CandidateWindow
+from app.constraints.candidate_generator import BlockRequest, CandidateWindow
 
 MINUTES_PER_DAY = 24 * 60
 

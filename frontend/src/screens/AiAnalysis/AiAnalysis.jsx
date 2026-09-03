@@ -59,6 +59,61 @@ import { PageShell, HeroBanner, cn } from "../../components/layout/Layout";
 
 const PRIORITY_RANK = { Low: 0, Medium: 1, High: 2, Critical: 3 };
 
+// ============================================================
+// CONFLICT TYPE HELPERS
+//
+// evaluate_candidate() can return six conflict types: TRAIN,
+// EXISTING_BLOCK, RESOURCE, DURATION, TIME_WINDOW, OPERATIONAL (see
+// constraint_engine.py's check_* functions for the exact dict shape of
+// each). Only TRAIN conflicts carry a real train-schedule delay; the
+// others are feasibility problems with their own fields. These helpers
+// turn any conflict type into a human-readable label/description so
+// non-train conflicts aren't silently invisible in the UI.
+// ============================================================
+
+const CONFLICT_TYPE_META = {
+  TRAIN: { label: "Train", theme: "text-red-600 bg-red-50" },
+  EXISTING_BLOCK: { label: "Existing Block", theme: "text-amber-600 bg-amber-50" },
+  RESOURCE: { label: "Resource", theme: "text-indigo-600 bg-indigo-50" },
+  DURATION: { label: "Duration", theme: "text-slate-600 bg-slate-100" },
+  TIME_WINDOW: { label: "Time Window", theme: "text-slate-600 bg-slate-100" },
+  OPERATIONAL: { label: "Operational", theme: "text-amber-600 bg-amber-50" },
+};
+
+function conflictTypeMeta(type) {
+  return CONFLICT_TYPE_META[type] || { label: type, theme: "text-slate-600 bg-slate-100" };
+}
+
+/** One-line human description of any conflict dict, regardless of type. */
+function describeConflict(conflict) {
+  switch (conflict.type) {
+    case "TRAIN":
+      return `${conflict.train_id} — ${conflict.train_name}`;
+    case "EXISTING_BLOCK":
+      return `Overlaps existing block ${conflict.existing_block_id} (${conflict.block_type})`;
+    case "RESOURCE":
+      return `${conflict.team} already committed on block ${conflict.existing_block_id}`;
+    case "DURATION":
+      return `Duration ${conflict.duration_min} min is outside the allowed ${conflict.allowed_min}\u2013${conflict.allowed_max} min range`;
+    case "TIME_WINDOW":
+      return conflict.reason
+        ? conflict.reason.replace(/_/g, " ")
+        : "Candidate window is not well-formed";
+    case "OPERATIONAL":
+      return `Within the ${conflict.buffer_min} min safety buffer of block ${conflict.existing_block_id}`;
+    default:
+      return conflict.type;
+  }
+}
+
+/** Short right-aligned value shown next to a conflict row. */
+function conflictMetric(conflict) {
+  if (conflict.type === "TRAIN" || conflict.type === "EXISTING_BLOCK" || conflict.type === "RESOURCE") {
+    return `${conflict.overlap_minutes} min`;
+  }
+  return "Not feasible";
+}
+
 function flattenConflicts(analysis) {
   const rows = [];
   for (const ev of analysis.evaluations || []) {
@@ -114,17 +169,28 @@ function deriveTopSections(analysis, limit = 3) {
     .map(([label, delayMin]) => ({ label, delayMin }));
 }
 
-/** Individual TRAIN conflicts, sorted by predicted delay. */
+/**
+ * Every conflict across every request/type, sorted with the most
+ * "serious" first (real time overlap first, then feasibility-only
+ * conflicts like DURATION/TIME_WINDOW which have no overlap_minutes).
+ * TRAIN conflicts are NOT the only thing shown here — a plan can be
+ * fully infeasible (e.g. RESOURCE/DURATION conflicts) with zero train
+ * impact, and that should still be visible somewhere in the UI.
+ */
 function deriveTopConflicts(analysis, limit = 5) {
-  const rows = flattenConflicts(analysis)
-    .filter((r) => r.conflict.type === "TRAIN")
-    .map(({ evaluation, conflict }) => ({
-      id: `${evaluation.block_request_id}-${conflict.train_id}`,
-      train: `${conflict.train_id} — ${conflict.train_name}`,
-      detail: `vs ${evaluation.maintenance_type} (${evaluation.section_id}/${evaluation.station_code})`,
-      delay: `${conflict.overlap_minutes} min`,
+  const rows = flattenConflicts(analysis).map(({ evaluation, conflict }, i) => {
+    const meta = conflictTypeMeta(conflict.type);
+    return {
+      id: `${evaluation.block_request_id}-${conflict.type}-${i}`,
+      type: conflict.type,
+      typeLabel: meta.label,
+      typeTheme: meta.theme,
+      train: describeConflict(conflict),
+      detail: `vs ${evaluation.maintenance_type} (${evaluation.section_id}/${evaluation.station_code}) \u2014 ${evaluation.block_request_id}`,
+      delay: conflictMetric(conflict),
       delayMin: conflict.overlap_minutes || 0,
-    }));
+    };
+  });
 
   return rows.sort((a, b) => b.delayMin - a.delayMin).slice(0, limit);
 }
@@ -140,6 +206,240 @@ function deriveSummary(analysis) {
     `found across ${infeasible} request${infeasible === 1 ? "" : "s"}, affecting ` +
     `${stats.affectedTrainCount} train${stats.affectedTrainCount === 1 ? "" : "s"} with an estimated ` +
     `${stats.predictedDelayMin} min of delay if scheduled as-is. Highest asset priority involved: ${stats.dominantPriority}.`
+  );
+}
+
+// ============================================================
+// DETAILS MODAL
+//
+// Backing content for every "View Details" / "View All" button. Each
+// stat card opens the same modal shell with different rows, built
+// straight from analysis.evaluations -- no separate backend call needed,
+// this is just surfacing data the API already returned.
+// ============================================================
+
+function buildAffectedTrainsDetail(analysis) {
+  const byTrain = new Map();
+  for (const { evaluation, conflict } of flattenConflicts(analysis)) {
+    if (conflict.type !== "TRAIN") continue;
+    const key = conflict.train_id;
+    const existing = byTrain.get(key) || {
+      trainId: conflict.train_id,
+      trainName: conflict.train_name,
+      totalDelay: 0,
+      hits: [],
+    };
+    existing.totalDelay += conflict.overlap_minutes || 0;
+    existing.hits.push(
+      `${evaluation.block_request_id} (${evaluation.maintenance_type}) \u2014 ${conflict.overlap_minutes} min overlap`
+    );
+    byTrain.set(key, existing);
+  }
+  return [...byTrain.values()].sort((a, b) => b.totalDelay - a.totalDelay);
+}
+
+function buildConflictsDetail(analysis) {
+  return (analysis.evaluations || []).map((ev) => ({
+    requestId: ev.block_request_id,
+    maintenanceType: ev.maintenance_type,
+    location: `${ev.section_id} / ${ev.station_code}`,
+    feasible: ev.feasible,
+    conflicts: (ev.conflicts || []).map((c) => ({
+      typeLabel: conflictTypeMeta(c.type).label,
+      typeTheme: conflictTypeMeta(c.type).theme,
+      description: describeConflict(c),
+      metric: conflictMetric(c),
+    })),
+  }));
+}
+
+function buildAssetPriorityDetail(analysis) {
+  return [...(analysis.evaluations || [])]
+    .filter((ev) => ev.asset_risk)
+    .sort(
+      (a, b) =>
+        (PRIORITY_RANK[b.asset_risk.predicted_priority] ?? -1) -
+        (PRIORITY_RANK[a.asset_risk.predicted_priority] ?? -1)
+    )
+    .map((ev) => ({
+      requestId: ev.block_request_id,
+      assetId: ev.asset_id,
+      priority: ev.asset_risk.predicted_priority,
+      score: ev.asset_risk.predicted_risk_score,
+      borderline: ev.asset_risk.borderline,
+    }));
+}
+
+function buildPredictedDelayDetail(analysis) {
+  return flattenConflicts(analysis)
+    .filter((r) => r.conflict.type === "TRAIN")
+    .map(({ evaluation, conflict }) => ({
+      requestId: evaluation.block_request_id,
+      trainLabel: `${conflict.train_id} \u2014 ${conflict.train_name}`,
+      location: `${evaluation.section_id} / ${evaluation.station_code}`,
+      delayMin: conflict.overlap_minutes || 0,
+    }))
+    .sort((a, b) => b.delayMin - a.delayMin);
+}
+
+const DETAIL_CONFIG = {
+  trains: { title: "Affected Trains" },
+  conflicts: { title: "All Conflicts" },
+  priority: { title: "Asset Priority Breakdown" },
+  delay: { title: "Predicted Delay Breakdown" },
+};
+
+function DetailsModal({ view, analysis, onClose }) {
+  if (!view) return null;
+  const { title } = DETAIL_CONFIG[view];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 sticky top-0 bg-white">
+          <div className="text-sm font-semibold text-slate-800">{title}</div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-lg leading-none"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-5">
+          {view === "trains" && <AffectedTrainsDetail analysis={analysis} />}
+          {view === "conflicts" && <ConflictsDetail analysis={analysis} />}
+          {view === "priority" && <PriorityDetail analysis={analysis} />}
+          {view === "delay" && <DelayDetail analysis={analysis} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyDetail({ text }) {
+  return <div className="text-xs text-slate-400 py-6 text-center">{text}</div>;
+}
+
+function AffectedTrainsDetail({ analysis }) {
+  const rows = useMemo(() => buildAffectedTrainsDetail(analysis), [analysis]);
+  if (rows.length === 0) {
+    return <EmptyDetail text="No train conflicts \u2014 every request's preferred window is clear of train movements at its station." />;
+  }
+  return (
+    <div className="space-y-4">
+      {rows.map((r) => (
+        <div key={r.trainId} className="border border-slate-100 rounded-xl p-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="text-sm font-semibold text-slate-700">
+              {r.trainId} — {r.trainName}
+            </div>
+            <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-md">
+              {r.totalDelay} min total
+            </span>
+          </div>
+          <ul className="text-xs text-slate-500 space-y-0.5 list-disc list-inside">
+            {r.hits.map((h, i) => (
+              <li key={i}>{h}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ConflictsDetail({ analysis }) {
+  const rows = useMemo(() => buildConflictsDetail(analysis), [analysis]);
+  const withConflicts = rows.filter((r) => r.conflicts.length > 0);
+  if (withConflicts.length === 0) {
+    return <EmptyDetail text="No conflicts of any type were found across these requests." />;
+  }
+  return (
+    <div className="space-y-4">
+      {withConflicts.map((r) => (
+        <div key={r.requestId} className="border border-slate-100 rounded-xl p-3">
+          <div className="text-sm font-semibold text-slate-700 mb-2">
+            {r.requestId} — {r.maintenanceType}{" "}
+            <span className="text-xs font-normal text-slate-400">({r.location})</span>
+          </div>
+          <div className="space-y-2">
+            {r.conflicts.map((c, i) => (
+              <div key={i} className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0", c.typeTheme)}>
+                    {c.typeLabel}
+                  </span>
+                  <span className="text-xs text-slate-600 truncate">{c.description}</span>
+                </div>
+                <span className="text-xs font-medium text-slate-500 shrink-0">{c.metric}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PriorityDetail({ analysis }) {
+  const rows = useMemo(() => buildAssetPriorityDetail(analysis), [analysis]);
+  if (rows.length === 0) {
+    return <EmptyDetail text="No asset risk data available." />;
+  }
+  return (
+    <div className="space-y-2">
+      {rows.map((r) => (
+        <div key={r.requestId} className="flex items-center justify-between gap-3 border border-slate-100 rounded-xl p-3">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-slate-700 truncate">
+              {r.requestId} — {r.assetId}
+            </div>
+            {r.borderline && (
+              <div className="text-[10px] text-amber-600 mt-0.5">
+                Borderline score — close to the next priority cutoff
+              </div>
+            )}
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-xs font-semibold text-slate-700">{r.priority}</div>
+            <div className="text-[10px] text-slate-400">score {r.score}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DelayDetail({ analysis }) {
+  const rows = useMemo(() => buildPredictedDelayDetail(analysis), [analysis]);
+  if (rows.length === 0) {
+    return <EmptyDetail text="No train-schedule overlaps \u2014 nothing is predicted to be delayed if every request runs at its preferred time." />;
+  }
+  return (
+    <div className="space-y-2">
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-center justify-between gap-3 border border-slate-100 rounded-xl p-3">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-slate-700 truncate">{r.trainLabel}</div>
+            <div className="text-xs text-slate-400 truncate">
+              {r.requestId} · {r.location}
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-red-600 bg-red-50 px-2 py-1 rounded-md shrink-0">
+            {r.delayMin} min
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -217,12 +517,22 @@ function TopImpactedSections({ sections }) {
 // TOP CONFLICTS
 // ============================================================
 
-function TopConflicts({ conflicts }) {
+function TopConflicts({ conflicts, onViewAll }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="text-sm font-semibold text-slate-700">Top Conflicts</div>
-        <button type="button" className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
+        <button
+          type="button"
+          onClick={onViewAll}
+          disabled={conflicts.length === 0}
+          className={cn(
+            "text-xs font-medium",
+            conflicts.length === 0
+              ? "text-slate-300 cursor-not-allowed"
+              : "text-indigo-600 hover:text-indigo-700"
+          )}
+        >
           View All
         </button>
       </div>
@@ -230,7 +540,7 @@ function TopConflicts({ conflicts }) {
       <div className="space-y-3">
         {conflicts.length === 0 ? (
           <div className="text-xs text-slate-400 py-6 text-center">
-            No train conflicts on the current plan.
+            No conflicts on the current plan.
           </div>
         ) : (
           conflicts.map((c, i) => (
@@ -241,7 +551,12 @@ function TopConflicts({ conflicts }) {
                 </span>
                 <AlertTriangle size={14} className="text-red-500 shrink-0" />
                 <div className="min-w-0">
-                  <div className="text-sm text-slate-700 font-medium truncate">{c.train}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded", c.typeTheme)}>
+                      {c.typeLabel}
+                    </span>
+                  </div>
+                  <div className="text-sm text-slate-700 font-medium truncate mt-0.5">{c.train}</div>
                   <div className="text-xs text-slate-400 truncate">{c.detail}</div>
                 </div>
               </div>
@@ -340,6 +655,7 @@ export default function AiAnalysis({
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [localAnalysis, setLocalAnalysis] = useState(analysis || null);
+  const [activeDetail, setActiveDetail] = useState(null); // 'trains' | 'conflicts' | 'priority' | 'delay' | null
 
   const handleRun = async () => {
     if (!onAnalyze) return;
@@ -412,6 +728,7 @@ export default function AiAnalysis({
               label="Affected Trains"
               value={stats.affectedTrainCount}
               sub="Trains will be impacted"
+              onViewDetails={() => setActiveDetail("trains")}
             />
             <StatCard
               icon={AlertTriangle}
@@ -419,6 +736,7 @@ export default function AiAnalysis({
               label="Conflicts Detected"
               value={stats.conflictsDetected}
               sub="Potential conflicts found"
+              onViewDetails={() => setActiveDetail("conflicts")}
             />
             <StatCard
               icon={ShieldAlert}
@@ -426,6 +744,7 @@ export default function AiAnalysis({
               label="Asset Priority"
               value={stats.dominantPriority}
               sub="Highest priority level involved"
+              onViewDetails={() => setActiveDetail("priority")}
             />
             <StatCard
               icon={Clock}
@@ -433,17 +752,25 @@ export default function AiAnalysis({
               label="Predicted Delay"
               value={`${stats.predictedDelayMin} min`}
               sub="Estimated delay if scheduled as-is"
+              onViewDetails={() => setActiveDetail("delay")}
             />
           </div>
 
           {/* SECTIONS + CONFLICTS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
             <TopImpactedSections sections={topSections} />
-            <TopConflicts conflicts={topConflicts} />
+            <TopConflicts conflicts={topConflicts} onViewAll={() => setActiveDetail("conflicts")} />
           </div>
 
           {/* SUMMARY */}
           <AnalysisSummary text={summary} />
+
+          {/* DETAILS MODAL */}
+          <DetailsModal
+            view={activeDetail}
+            analysis={result}
+            onClose={() => setActiveDetail(null)}
+          />
         </>
       )}
     </PageShell>
