@@ -24,14 +24,42 @@ export const DATASETS = [
     label: "Asset Health",
     icon: Activity,
     hint: "Condition score, risk score per asset",
-    requiredColumns: ["asset_id", "section_id", "condition_score", "asset_risk_score"],
+    // Matches asset_health_data_dictionary.md exactly.
+    requiredColumns: [
+      "asset_id",
+      "asset_type",
+      "section_id",
+      "nearest_station_code",
+      "age_years",
+      "condition_score",
+      "failure_count_24m",
+      "days_since_last_maintenance",
+      "usage_percent",
+      "criticality",
+    ],
   },
   {
     key: "block_requests",
     label: "Maintenance Requests",
     icon: ClipboardList,
     hint: "Block requests with priority & duration",
-    requiredColumns: ["block_request_id", "asset_id", "section_id", "requested_duration_min"],
+    // Matches block_request_data_dictionary.md / candidate_generator.py's
+    // _REQUIRED_COLUMNS exactly — keep these two in sync if the backend
+    // schema changes.
+    requiredColumns: [
+      "block_request_id",
+      "asset_id",
+      "section_id",
+      "station_code",
+      "maintenance_type",
+      "requested_duration_min",
+      "priority",
+      "preferred_start_time",
+      "time_flexibility",
+      "required_team",
+      "request_urgency",
+      "status",
+    ],
   },
   {
     key: "existing_blocks",

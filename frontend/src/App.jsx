@@ -1,22 +1,40 @@
 import React, { useState } from "react";
 import Upload from "./screens/Upload/Upload.jsx";
 import BlockRequest from "./screens/BlockRequest/BlockRequest.jsx";
+import AiAnalysis from "./screens/AiAnalysis/AiAnalysis.jsx";
 
 export default function App() {
   const [step, setStep] = useState("upload");
 
-  // Lifted here (instead of living inside each screen) so switching
-  // steps — including hitting Back — doesn't wipe what the user entered.
   const [files, setFiles] = useState({});
   const [requests, setRequests] = useState([]);
+  const [analysis, setAnalysis] = useState(null);
 
-  // Tracks which steps the user has already advanced past, so the
-  // sidebar keeps them unlocked even after navigating back to an
-  // earlier step. Once a step is completed it stays completed.
   const [completedSteps, setCompletedSteps] = useState([]);
-
   const markCompleted = (key) => {
     setCompletedSteps((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  };
+
+  // Placeholder until Developer 1/2's real API is wired in. Swap this
+  // for an actual fetch("/api/analyze", { body: requests }) call —
+  // the shape returned must match what AiAnalysis.jsx expects (see the
+  // JSDoc on that component for the exact fields).
+  const runAnalysis = async (blockRequests) => {
+    await new Promise((r) => setTimeout(r, 900)); // simulated processing time
+    return {
+      affectedTrains: 18,
+      conflictsDetected: 5,
+      assetPriority: "HIGH",
+      predictedDelayMin: 42,
+      sections: { a: "Section A", b: "Section B", c: "Section C" },
+      topConflicts: [
+        { id: 1, train: "Train 12951 (NDLS – BCT)", detail: "vs Track Maintenance (Section A)", delay: "22 min" },
+        { id: 2, train: "Train 12008 (BCT – NDLS)", detail: "vs Signal Maintenance (Section B)", delay: "12 min" },
+        { id: 3, train: "Train 22119 (BSB – BCT)", detail: "vs Track Maintenance (Section A)", delay: "8 min" },
+      ],
+      summary:
+        "AI has analyzed all inputs including train schedules, asset health, block requests and operational constraints to identify impacts, conflicts, asset priorities and delay predictions.",
+    };
   };
 
   if (step === "upload") {
@@ -43,7 +61,28 @@ export default function App() {
         onBack={() => setStep("upload")}
         onContinue={() => {
           markCompleted("request");
-          alert(`Continue → Step 3 (not built yet). ${requests.length} request(s) captured.`);
+          setStep("analysis");
+        }}
+        onNavigate={(key) => setStep(key)}
+      />
+    );
+  }
+
+  if (step === "analysis") {
+    return (
+      <AiAnalysis
+        requests={requests}
+        analysis={analysis}
+        onAnalyze={async (blockRequests) => {
+          const result = await runAnalysis(blockRequests);
+          setAnalysis(result);
+          return result;
+        }}
+        completedKeys={completedSteps}
+        onBack={() => setStep("request")}
+        onContinue={() => {
+          markCompleted("analysis");
+          alert("Continue → Step 4 (Generate Optimal Plan, not built yet)");
         }}
         onNavigate={(key) => setStep(key)}
       />

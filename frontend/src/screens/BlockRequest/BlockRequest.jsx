@@ -1,123 +1,335 @@
 import React, { useState } from "react";
-import { ClipboardList, Plus, Trash2, Pencil, AlertCircle, ChevronDown } from "lucide-react";
-import { PageShell, HeroBanner, cn } from "../../components/layout/Layout";
+import {
+  ClipboardList,
+  Plus,
+  Trash2,
+  Pencil,
+  AlertCircle,
+  ChevronDown,
+} from "lucide-react";
+
+import {
+  PageShell,
+  HeroBanner,
+  cn,
+} from "../../components/layout/Layout";
 
 // ============================================================
 // CONFIG
 // ============================================================
 
-const ACTIVITY_TYPES = ["Track Maintenance", "Signal Maintenance", "Overhead Equipment", "Inspection"];
-const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
+const ACTIVITY_TYPES = [
+  "Track Maintenance",
+  "Signal Maintenance",
+  "Overhead Equipment",
+  "Inspection",
+];
+
+const PRIORITIES = [
+  "Low",
+  "Medium",
+  "High",
+  "Critical",
+];
+
+const FLEXIBILITY_OPTIONS = [
+  "Fixed",
+  "±15 min",
+  "±30 min",
+  "±60 min",
+];
+
+const URGENCY_OPTIONS = [
+  "Normal",
+  "Urgent",
+];
+
+// Required team is now a dropdown instead of free text.
+// This prevents inconsistent team names being sent to
+// the optimizer.
+const TEAM_OPTIONS = [
+  "Bridge Inspection Team",
+  "Track Maintenance Team",
+  "Signal Team",
+  "OHE Team",
+];
 
 const PRIORITY_STYLES = {
-  LOW: "bg-slate-100 text-slate-600",
-  MEDIUM: "bg-amber-100 text-amber-700",
-  HIGH: "bg-red-100 text-red-600",
-  CRITICAL: "bg-red-600 text-white",
+  Low: "bg-slate-100 text-slate-600",
+  Medium: "bg-amber-100 text-amber-700",
+  High: "bg-red-100 text-red-600",
+  Critical: "bg-red-600 text-white",
 };
 
+// ============================================================
+// EMPTY FORM
+// ============================================================
+
+// Only user-entered fields are kept here.
+//
+// Backend/default fields:
+// - block_request_id -> generated automatically
+// - section_id       -> will be resolved from asset
+// - station_code     -> will be resolved from asset
+// - status           -> automatically "Pending"
+//
+// Section and Station are intentionally NOT requested from
+// the user anymore.
 const EMPTY_FORM = {
   activity: ACTIVITY_TYPES[0],
-  section: "",
+  assetId: "",
   duration: "",
-  priority: "HIGH",
-  flexibility: "",
+  priority: "High",
+  preferredStartTime: "",
+  flexibility: FLEXIBILITY_OPTIONS[2],
+  requiredTeam: "",
+  urgency: "Normal",
 };
 
-function nextRequestId(count) {
-  return `BR-${String(count + 1).padStart(3, "0")}`;
+// ============================================================
+// REQUEST ID
+// ============================================================
+
+function nextRequestId(requests) {
+  const numbers = requests
+    .map((request) => {
+      const match = String(request.id || "").match(/^BR-(\d+)$/);
+      return match ? Number(match[1]) : 0;
+    })
+    .filter((number) => number > 0);
+
+  const nextNumber =
+    numbers.length > 0
+      ? Math.max(...numbers) + 1
+      : 1;
+
+  return `BR-${String(nextNumber).padStart(3, "0")}`;
 }
 
 // ============================================================
 // REQUEST FORM
 // ============================================================
 
-function RequestForm({ form, setForm, onAdd, error }) {
-  // Fixed height + box-border on every control (inputs AND selects) so native
-  // select rendering can't push its height/baseline out of line with the
-  // text inputs next to it — that mismatch was the source of the row
-  // "jumping" up/down between fields.
+function RequestForm({
+  form,
+  setForm,
+  onAdd,
+  error,
+  editing,
+}) {
   const inputClass =
     "h-10 w-full box-border rounded-lg border border-slate-200 px-3 text-sm text-slate-800 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400";
-  const selectClass = cn(inputClass, "appearance-none pr-9");
-  const labelClass = "text-xs font-medium text-slate-500 mb-1.5 block h-4";
+
+  const selectClass = cn(
+    inputClass,
+    "appearance-none pr-9"
+  );
+
+  const labelClass =
+    "text-xs font-medium text-slate-500 mb-1.5 block h-4";
+
+  const Select = ({
+    value,
+    onChange,
+    options,
+  }) => (
+    <div className="relative">
+      <select
+        className={selectClass}
+        value={value}
+        onChange={onChange}
+      >
+        {options.map((option) => (
+          <option
+            key={option}
+            value={option}
+          >
+            {option}
+          </option>
+        ))}
+      </select>
+
+      <ChevronDown
+        size={14}
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+      />
+    </div>
+  );
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
-        <div>
-          <label className={labelClass}>Activity</label>
-          <div className="relative">
-            <select
-              className={selectClass}
-              value={form.activity}
-              onChange={(e) => setForm((f) => ({ ...f, activity: e.target.value }))}
-            >
-              {ACTIVITY_TYPES.map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-          </div>
-        </div>
 
+      {/* ======================================================
+          ROW 1
+          ====================================================== */}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start mb-4">
+
+        {/* Activity */}
         <div>
-          <label className={labelClass}>Section</label>
-          <input
-            className={inputClass}
-            placeholder="e.g. Section A"
-            value={form.section}
-            onChange={(e) => setForm((f) => ({ ...f, section: e.target.value }))}
+          <label className={labelClass}>
+            Activity
+          </label>
+
+          <Select
+            value={form.activity}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                activity: e.target.value,
+              }))
+            }
+            options={ACTIVITY_TYPES}
           />
         </div>
 
+        {/* Asset */}
         <div>
-          <label className={labelClass}>Duration (min)</label>
+          <label className={labelClass}>
+            Asset ID
+          </label>
+
+          <input
+            className={inputClass}
+            placeholder="e.g. AST-0157"
+            value={form.assetId}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                assetId: e.target.value.toUpperCase(),
+              }))
+            }
+          />
+
+          <div className="text-[10px] text-slate-400 mt-1">
+            Section and station are determined from the asset.
+          </div>
+        </div>
+
+        {/* Duration */}
+        <div>
+          <label className={labelClass}>
+            Duration (min)
+          </label>
+
           <input
             type="number"
             min="1"
             className={inputClass}
             placeholder="45"
             value={form.duration}
-            onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                duration: e.target.value,
+              }))
+            }
           />
         </div>
 
+        {/* Preferred Start */}
         <div>
-          <label className={labelClass}>Priority</label>
-          <div className="relative">
-            <select
-              className={selectClass}
-              value={form.priority}
-              onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-            >
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-            <ChevronDown
-              size={14}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-          </div>
-        </div>
+          <label className={labelClass}>
+            Preferred Start Time
+          </label>
 
-        <div>
-          <label className={labelClass}>Time Flexibility (± min)</label>
           <input
-            type="number"
-            min="0"
+            type="time"
             className={inputClass}
-            placeholder="30"
-            value={form.flexibility}
-            onChange={(e) => setForm((f) => ({ ...f, flexibility: e.target.value }))}
+            value={form.preferredStartTime}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                preferredStartTime: e.target.value,
+              }))
+            }
           />
         </div>
       </div>
 
+      {/* ======================================================
+          ROW 2
+          ====================================================== */}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+
+        {/* Priority */}
+        <div>
+          <label className={labelClass}>
+            Priority
+          </label>
+
+          <Select
+            value={form.priority}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                priority: e.target.value,
+              }))
+            }
+            options={PRIORITIES}
+          />
+        </div>
+
+        {/* Flexibility */}
+        <div>
+          <label className={labelClass}>
+            Time Flexibility
+          </label>
+
+          <Select
+            value={form.flexibility}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                flexibility: e.target.value,
+              }))
+            }
+            options={FLEXIBILITY_OPTIONS}
+          />
+        </div>
+
+        {/* Required Team */}
+        <div>
+          <label className={labelClass}>
+            Required Team
+          </label>
+
+          <Select
+            value={form.requiredTeam}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                requiredTeam: e.target.value,
+              }))
+            }
+            options={[
+              "Select team",
+              ...TEAM_OPTIONS,
+            ]}
+          />
+        </div>
+
+        {/* Urgency */}
+        <div>
+          <label className={labelClass}>
+            Request Urgency
+          </label>
+
+          <Select
+            value={form.urgency}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                urgency: e.target.value,
+              }))
+            }
+            options={URGENCY_OPTIONS}
+          />
+        </div>
+      </div>
+
+      {/* ERROR */}
       {error && (
         <div className="flex items-center gap-2 text-xs text-red-600 mt-3">
           <AlertCircle size={14} />
@@ -125,6 +337,7 @@ function RequestForm({ form, setForm, onAdd, error }) {
         </div>
       )}
 
+      {/* ADD / UPDATE BUTTON */}
       <div className="flex justify-end mt-4">
         <button
           type="button"
@@ -132,7 +345,10 @@ function RequestForm({ form, setForm, onAdd, error }) {
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
         >
           <Plus size={16} />
-          Add Request
+
+          {editing
+            ? "Update Request"
+            : "Add Request"}
         </button>
       </div>
     </div>
@@ -143,58 +359,132 @@ function RequestForm({ form, setForm, onAdd, error }) {
 // REQUEST TABLE
 // ============================================================
 
-function RequestTable({ requests, onEdit, onDelete }) {
+function RequestTable({
+  requests,
+  onEdit,
+  onDelete,
+}) {
   if (requests.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-white py-5 text-center">
-        <ClipboardList size={26} className="text-slate-300" />
-        <div className="text-sm font-medium text-slate-500">No block requests yet</div>
-        <div className="text-xs text-slate-400">Add a maintenance request above to get started.</div>
+        <ClipboardList
+          size={26}
+          className="text-slate-300"
+        />
+
+        <div className="text-sm font-medium text-slate-500">
+          No block requests yet
+        </div>
+
+        <div className="text-xs text-slate-400">
+          Add a maintenance request above to get started.
+        </div>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
-      {/* table-fixed + an explicit colgroup pins every column to a set
-          width, so a long Activity/Section value can no longer squeeze
-          the Action column and make its icons drift left over the row. */}
-      <table className="w-full min-w-[720px] text-sm table-fixed">
+
+      <table className="w-full min-w-[820px] text-sm table-fixed">
+
         <colgroup>
-          <col className="w-[12%]" />
-          <col className="w-[20%]" />
-          <col className="w-[16%]" />
-          <col className="w-[13%]" />
-          <col className="w-[13%]" />
+          <col className="w-[10%]" />
+          <col className="w-[18%]" />
           <col className="w-[14%]" />
+          <col className="w-[11%]" />
+          <col className="w-[12%]" />
+          <col className="w-[12%]" />
+          <col className="w-[11%]" />
           <col className="w-[12%]" />
         </colgroup>
+
         <thead>
           <tr className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-400">
-            <th className="px-4 py-3 font-medium">ID</th>
-            <th className="px-4 py-3 font-medium">Activity</th>
-            <th className="px-4 py-3 font-medium">Section</th>
-            <th className="px-4 py-3 font-medium">Duration</th>
-            <th className="px-4 py-3 font-medium">Priority</th>
-            <th className="px-4 py-3 font-medium">Flexibility</th>
-            <th className="px-4 py-3 font-medium text-right">Action</th>
+
+            <th className="px-4 py-3 font-medium">
+              ID
+            </th>
+
+            <th className="px-4 py-3 font-medium">
+              Activity
+            </th>
+
+            <th className="px-4 py-3 font-medium">
+              Asset
+            </th>
+
+            <th className="px-4 py-3 font-medium">
+              Duration
+            </th>
+
+            <th className="px-4 py-3 font-medium">
+              Preferred
+            </th>
+
+            <th className="px-4 py-3 font-medium">
+              Priority
+            </th>
+
+            <th className="px-4 py-3 font-medium">
+              Flex
+            </th>
+
+            <th className="px-4 py-3 font-medium text-right">
+              Action
+            </th>
+
           </tr>
         </thead>
+
         <tbody>
           {requests.map((r) => (
-            <tr key={r.id} className="border-t border-slate-100">
-              <td className="px-4 py-3 align-middle font-medium text-slate-700 truncate">{r.id}</td>
-              <td className="px-4 py-3 align-middle text-slate-600 truncate">{r.activity}</td>
-              <td className="px-4 py-3 align-middle text-slate-600 truncate">{r.section}</td>
-              <td className="px-4 py-3 align-middle text-slate-600 truncate">{r.duration} min</td>
+            <tr
+              key={r.id}
+              className="border-t border-slate-100"
+            >
+
+              <td className="px-4 py-3 align-middle font-medium text-slate-700 truncate">
+                {r.id}
+              </td>
+
+              <td className="px-4 py-3 align-middle text-slate-600 truncate">
+                {r.activity}
+              </td>
+
+              <td className="px-4 py-3 align-middle text-slate-600 truncate">
+                {r.assetId}
+              </td>
+
+              <td className="px-4 py-3 align-middle text-slate-600 truncate">
+                {r.duration} min
+              </td>
+
+              <td className="px-4 py-3 align-middle text-slate-600 truncate">
+                {r.preferredStartTime}
+              </td>
+
               <td className="px-4 py-3 align-middle">
-                <span className={cn("inline-block px-2 py-0.5 rounded-md text-xs font-semibold whitespace-nowrap", PRIORITY_STYLES[r.priority])}>
+
+                <span
+                  className={cn(
+                    "inline-block px-2 py-0.5 rounded-md text-xs font-semibold whitespace-nowrap",
+                    PRIORITY_STYLES[r.priority]
+                  )}
+                >
                   {r.priority}
                 </span>
+
               </td>
-              <td className="px-4 py-3 align-middle text-slate-600 truncate">±{r.flexibility} min</td>
+
+              <td className="px-4 py-3 align-middle text-slate-600 truncate">
+                {r.flexibility}
+              </td>
+
               <td className="px-4 py-3 align-middle">
+
                 <div className="flex items-center justify-end gap-2">
+
                   <button
                     type="button"
                     onClick={() => onEdit(r.id)}
@@ -203,6 +493,7 @@ function RequestTable({ requests, onEdit, onDelete }) {
                   >
                     <Pencil size={14} />
                   </button>
+
                   <button
                     type="button"
                     onClick={() => onDelete(r.id)}
@@ -211,88 +502,203 @@ function RequestTable({ requests, onEdit, onDelete }) {
                   >
                     <Trash2 size={14} />
                   </button>
+
                 </div>
+
               </td>
+
             </tr>
           ))}
         </tbody>
+
       </table>
     </div>
   );
 }
 
 // ============================================================
-// MAIN SCREEN (Step 2: Create Block Request)
+// MAIN SCREEN
 // ============================================================
 
-/**
- * @param {{
- *   onContinue: (requests: object[]) => void,
- *   onBack?: () => void,
- *   onNavigate?: (stepKey: string) => void,
- * }} props
- */
-export default function BlockRequest({ requests, setRequests, completedKeys, onContinue, onBack, onNavigate }) {
+export default function BlockRequest({
+  requests,
+  setRequests,
+  completedKeys,
+  onContinue,
+  onBack,
+  onNavigate,
+}) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState("");
 
+  // ==========================================================
+  // VALIDATION
+  // ==========================================================
+
   const validate = () => {
-    if (!form.section.trim()) return "Section is required.";
-    if (!form.duration || Number(form.duration) <= 0) return "Duration must be a positive number.";
-    if (form.flexibility === "" || Number(form.flexibility) < 0) return "Time flexibility must be 0 or more.";
+
+    if (!form.assetId.trim()) {
+      return "Asset ID is required.";
+    }
+
+    if (
+      !form.duration ||
+      Number(form.duration) <= 0
+    ) {
+      return "Duration must be a positive number.";
+    }
+
+    if (!form.preferredStartTime) {
+      return "Preferred start time is required.";
+    }
+
+    if (
+      !form.requiredTeam ||
+      form.requiredTeam === "Select team"
+    ) {
+      return "Required team is required.";
+    }
+
     return "";
   };
 
+  // ==========================================================
+  // ADD / UPDATE REQUEST
+  // ==========================================================
+
   const handleAdd = () => {
+
     const validationError = validate();
+
     if (validationError) {
       setError(validationError);
       return;
     }
+
     setError("");
 
     if (editingId) {
+
+      // UPDATE EXISTING REQUEST
       setRequests((prev) =>
-        prev.map((r) => (r.id === editingId ? { ...r, ...form, duration: Number(form.duration), flexibility: Number(form.flexibility) } : r))
+        prev.map((r) =>
+          r.id === editingId
+            ? {
+                ...r,
+                ...form,
+                duration: Number(form.duration),
+
+                // Always keep status as Pending.
+                status: "Pending",
+              }
+            : r
+        )
       );
+
       setEditingId(null);
+
     } else {
+
+      // ADD NEW REQUEST
       setRequests((prev) => [
         ...prev,
+
         {
-          id: nextRequestId(prev.length),
+          id: nextRequestId(prev),
+
           ...form,
+
           duration: Number(form.duration),
-          flexibility: Number(form.flexibility),
+
+          // Backend/default field.
+          status: "Pending",
+
+          // These are intentionally empty for now.
+          // They will be resolved from the asset mapping
+          // when the frontend is connected to the backend.
+          section: "",
+          stationCode: "",
         },
       ]);
     }
+
     setForm(EMPTY_FORM);
   };
 
+  // ==========================================================
+  // EDIT REQUEST
+  // ==========================================================
+
   const handleEdit = (id) => {
-    const target = requests.find((r) => r.id === id);
+
+    const target = requests.find(
+      (r) => r.id === id
+    );
+
     if (!target) return;
+
     setForm({
-      activity: target.activity,
-      section: target.section,
-      duration: String(target.duration),
-      priority: target.priority,
-      flexibility: String(target.flexibility),
+      activity:
+        target.activity ||
+        ACTIVITY_TYPES[0],
+
+      assetId:
+        target.assetId || "",
+
+      duration:
+        target.duration !== undefined
+          ? String(target.duration)
+          : "",
+
+      priority:
+        target.priority || "High",
+
+      preferredStartTime:
+        target.preferredStartTime || "",
+
+      flexibility:
+        target.flexibility ||
+        FLEXIBILITY_OPTIONS[2],
+
+      requiredTeam:
+        target.requiredTeam || "",
+
+      urgency:
+        target.urgency || "Normal",
     });
+
     setEditingId(id);
+    setError("");
   };
 
+  // ==========================================================
+  // DELETE REQUEST
+  // ==========================================================
+
   const handleDelete = (id) => {
-    setRequests((prev) => prev.filter((r) => r.id !== id));
+
+    setRequests((prev) =>
+      prev.filter((r) => r.id !== id)
+    );
+
     if (editingId === id) {
       setEditingId(null);
       setForm(EMPTY_FORM);
+      setError("");
     }
   };
 
-  const canContinue = requests.length > 0;
+  // ==========================================================
+  // CONTINUE
+  // ==========================================================
+
+  const canContinue =
+    requests.length > 0;
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
     <PageShell
@@ -302,50 +708,60 @@ export default function BlockRequest({ requests, setRequests, completedKeys, onC
       topbarIcon={ClipboardList}
       topbarLabel="Create Block Request"
     >
+
       <HeroBanner
-  title="Create Block Request"
-  subtitle="Add the maintenance activities and block requirements you need scheduled."
-/>
+        title="Create Block Request"
+        subtitle="Add the maintenance activities and block requirements you need scheduled."
+      />
 
-{/* TOP NAV */}
-<div className="flex items-center justify-between mt-4 mb-4">
-  <button
-    type="button"
-    onClick={onBack}
-    className="px-5 py-2 rounded-lg text-base font-semibold text-slate-500 hover:text-slate-700 transition"
-  >
-    ← Back
-  </button>
+      {/* TOP NAV */}
 
-  <button
-    type="button"
-    disabled={!canContinue}
-    onClick={() => onContinue?.(requests)}
-    className={cn(
-      "px-6 sm:px-7 py-2 sm:py-2.5 rounded-lg text-base sm:text-lg font-semibold border transition-all duration-200",
-      canContinue
-        ? "border-[#3a83f7] bg-[#3a83f7] text-white hover:bg-[#3275e6] hover:border-[#3275e6] shadow-sm"
-        : "border-red-300 bg-transparent text-red-400 cursor-not-allowed"
-    )}
-  >
-    Continue →
-  </button>
-</div>
+      <div className="flex items-center justify-between mt-4 mb-4">
 
-<RequestForm
-  form={form}
-  setForm={setForm}
-  onAdd={handleAdd}
-  error={error}
-/>
+        <button
+          type="button"
+          onClick={onBack}
+          className="px-5 py-2 rounded-lg text-base font-semibold text-slate-500 hover:text-slate-700 transition"
+        >
+          ← Back
+        </button>
 
-<div className="mt-5">
-  <RequestTable
-    requests={requests}
-    onEdit={handleEdit}
-    onDelete={handleDelete}
-  />
-</div>
+        <button
+  type="button"
+  disabled={!canContinue}
+  onClick={() => onContinue?.(requests)}
+  className={cn(
+    "px-6 sm:px-7 py-2 sm:py-2.5 rounded-lg text-base sm:text-lg font-semibold border transition-all duration-200",
+    canContinue
+      ? "border-[#3a83f7] bg-[#3a83f7] text-white hover:bg-[#3275e6] hover:border-[#3275e6] shadow-sm"
+      : "border-red-300 bg-transparent text-red-400 cursor-not-allowed"
+  )}
+>
+  Continue →
+</button>
+
+      </div>
+
+      {/* FORM */}
+
+      <RequestForm
+        form={form}
+        setForm={setForm}
+        onAdd={handleAdd}
+        error={error}
+        editing={Boolean(editingId)}
+      />
+
+      {/* REQUEST TABLE */}
+
+      <div className="mt-5">
+        <RequestTable
+          requests={requests}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      </div>
+
     </PageShell>
   );
 }
