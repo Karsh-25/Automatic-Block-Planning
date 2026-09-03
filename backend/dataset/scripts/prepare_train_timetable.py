@@ -6,7 +6,7 @@ import pandas as pd
 # PROJECT PATHS
 # ============================================================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 RAW_DIR = BASE_DIR / "raw"
 PROCESSED_DIR = BASE_DIR / "processed"
@@ -144,6 +144,10 @@ def clean_strings(df):
                 regex=True
             )
         )
+        df[column] = (
+            df[column]
+            .str.strip("'\"")
+        )
 
     # Railway station codes should be uppercase
     code_columns = [
@@ -198,7 +202,7 @@ def time_to_minutes(value):
 
     parsed = pd.to_datetime(
         value,
-        format="%H:%M",
+        format="%H:%M:%S",
         errors="coerce"
     )
 
