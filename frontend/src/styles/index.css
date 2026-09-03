@@ -5,3 +5,39 @@
 body {
   background-color: #f8fafc;
 }
+
+/* Dataset upload success feedback: the card washes green from the
+   bottom edge upward, then the check badge pops in once the sweep
+   has mostly finished. */
+@keyframes upload-sweep {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes upload-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-upload-sweep {
+  transform-origin: bottom center;
+  animation: upload-sweep 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-upload-pop {
+  animation: upload-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.28s both;
+}
