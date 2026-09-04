@@ -45,7 +45,13 @@ from app.constraints.constraint_engine import (
     build_evaluation_context,
     evaluate_candidate,
 )
-from app.optimization.block_optimizer import load_asset_lookup, get_asset_risk
+from app.optimization.block_optimizer import (
+    load_asset_lookup,
+    get_asset_risk,
+    optimize_block_plan,
+    explain_entry,
+)
+from app.simulation.simulator import simulate_optimization_result
 
 # ==========================================================================
 # Dataset paths
@@ -208,6 +214,127 @@ def analyze(payload: AnalyzeRequest) -> Dict[str, Any]:
 
     evaluations = [_evaluate_one(item) for item in payload.requests]
     return {"evaluations": evaluations}
+
+
+@app.post("/api/optimize")
+def optimize(payload: AnalyzeRequest) -> Dict[str, Any]:
+    """
+    Step 4 ("Generate Optimal Plan"). Wraps the existing, already-tested
+    Phase 3 OR-Tools optimizer (block_optimizer.optimize_block_plan) --
+    no optimization logic is re-implemented here.
+
+    Unlike /api/analyze (which only checks each request's *preferred*
+    time), this runs the full pipeline for every request in the payload:
+
+        candidate_generator.generate_candidate_windows   (Phase 1, all offsets)
+        constraint_engine.evaluate_candidates_for_request (Phase 2, every candidate)
+        block_optimizer.compute_score + CP-SAT solve      (Phase 3)
+
+    Returns:
+        {
+          "solver_status": "OPTIMAL" | "INFEASIBLE" | ... ,
+          "objective_value": float | null,
+          "scheduled_count": int,
+          "unscheduled_count": int,
+          "plans": [ block_optimizer.explain_entry(entry), ... ]
+        }
+
+    Each entry of "plans" is exactly block_optimizer.explain_entry()'s
+    output (request context, scheduled/selected_window/score/
+    next_best_alternatives when scheduled, or a reason when not) --
+    see that function's docstring for the full field list. The only
+    addition made here is `asset_id`, and `asset_risk` for requests
+    that were NOT scheduled: explain_entry() only attaches asset_risk
+    when a candidate was actually selected, but the frontend still
+    needs to show "how risky is this asset" even when nothing could be
+    scheduled. Both are pulled from the same already-loaded asset
+    lookup / predict_risk() cache /api/analyze already uses, not
+    recomputed or invented.
+    """
+    if _evaluation_context is None or _asset_lookup is None:
+        raise HTTPException(status_code=503, detail="Reference data not loaded yet.")
+
+    if not payload.requests:
+        raise HTTPException(status_code=422, detail="No block requests provided.")
+
+    domain_requests = [_to_domain_block_request(item) for item in payload.requests]
+
+    result = optimize_block_plan(
+        requests=domain_requests,
+        context=_evaluation_context,
+        asset_lookup=_asset_lookup,
+    )
+
+    plans: List[Dict[str, Any]] = []
+    for entry in result.entries:
+        explanation = explain_entry(entry)
+        explanation["asset_id"] = entry.request.asset_id
+        if "asset_risk" not in explanation:
+            asset_risk = get_asset_risk(entry.request.asset_id, _asset_lookup, _asset_risk_cache)
+            explanation["asset_risk"] = {
+                "predicted_risk_score": asset_risk.predicted_risk_score,
+                "predicted_priority": asset_risk.predicted_priority,
+                "borderline": asset_risk.borderline,
+                "source": asset_risk.source,
+            }
+        plans.append(explanation)
+
+    return {
+        "solver_status": result.solver_status,
+        "objective_value": result.objective_value,
+        "scheduled_count": result.scheduled_count,
+        "unscheduled_count": result.unscheduled_count,
+        "plans": plans,
+    }
+
+
+@app.post("/api/simulate")
+def simulate(payload: AnalyzeRequest) -> Dict[str, Any]:
+    """
+    Step 5 ("Simulate & Validate Plan"). Wraps the existing, already-tested
+    Phase 4 simulator (simulator.simulate_optimization_result) -- no
+    simulation logic is re-implemented here.
+
+    There is no separate "load a previously computed plan" step: CP-SAT is
+    deterministic, so re-running optimize_block_plan() on the exact same
+    requests payload Page 4 sent reproduces the identical plan Page 4
+    showed, byte for byte. That real OptimizationResult object (with its
+    actual BlockPlanEntry/ScoredCandidate dataclasses) is then handed
+    directly to simulate_optimization_result() -- never serialized to
+    JSON and reconstructed by hand, so nothing about Phase 3's output is
+    duplicated or approximated here. This mirrors simulator.py's own
+    documented pipeline:
+
+        candidate_generator -> constraint_engine -> block_optimizer (Phase 3)
+        -> simulator.simulate_optimization_result() (Phase 4)
+
+    Returns simulator.SimulationReport.to_dict() completely unchanged --
+    see simulator.py for the exact field list. In particular:
+      - block_results[i].simulated_delay_min is the project's own narrow
+        definition (train-conflict overlap minutes on the executed
+        window during independent re-verification) -- NOT a real-world
+        delay prediction. See block_results[i].reason and the top-level
+        "limitations" list, which is returned as-is from
+        simulator.SIMULATION_LIMITATIONS.
+      - Unscheduled requests get simulated_delay_min = null (never a
+        fabricated 0), exactly as simulator.py defines.
+    """
+    if _evaluation_context is None or _asset_lookup is None:
+        raise HTTPException(status_code=503, detail="Reference data not loaded yet.")
+
+    if not payload.requests:
+        raise HTTPException(status_code=422, detail="No block requests provided.")
+
+    domain_requests = [_to_domain_block_request(item) for item in payload.requests]
+
+    result = optimize_block_plan(
+        requests=domain_requests,
+        context=_evaluation_context,
+        asset_lookup=_asset_lookup,
+    )
+
+    report = simulate_optimization_result(result, _evaluation_context)
+    return report.to_dict()
 
 
 @app.get("/api/health")
