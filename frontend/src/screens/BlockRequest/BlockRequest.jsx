@@ -46,9 +46,7 @@ const URGENCY_OPTIONS = [
   "Urgent",
 ];
 
-// Required team is now a dropdown instead of free text.
-// This prevents inconsistent team names being sent to
-// the optimizer.
+// Required team dropdown
 const TEAM_OPTIONS = [
   "Bridge Inspection Team",
   "Track Maintenance Team",
@@ -67,22 +65,23 @@ const PRIORITY_STYLES = {
 // EMPTY FORM
 // ============================================================
 
-// Only user-entered fields are kept here.
+// Section ID and Station Code are:
+// 1. Auto-filled when Asset ID exists in assetStationMap.
+// 2. Manually entered when Asset ID has no mapping.
 //
 // Backend/default fields:
 // - block_request_id -> generated automatically
-// - section_id       -> resolved from asset via assetStationMap
-// - station_code     -> resolved from asset via assetStationMap
+// - section_id       -> auto OR manually entered
+// - station_code     -> auto OR manually entered
 // - status           -> automatically "Pending"
-//
-// Section and Station are intentionally NOT typed by the user directly —
-// they're derived from Asset ID (see resolveAssetLocation) and shown
-// read-only, since the backend keys every conflict check off of
-// request.section_id / request.station_code (constraint_engine.py).
+
 const EMPTY_FORM = {
   activity: ACTIVITY_TYPES[0],
   assetId: "",
-  location: null, // { sectionId, stationCode } resolved from assetId
+  location: {
+    sectionId: "",
+    stationCode: "",
+  },
   duration: "",
   priority: "High",
   preferredStartTime: "",
@@ -199,51 +198,81 @@ function RequestForm({
             placeholder="e.g. AST-0157"
             value={form.assetId}
             onChange={(e) => {
-              const assetId = e.target.value.toUpperCase();
+              const assetId =
+                e.target.value.toUpperCase();
+
+              // Try automatic asset -> section/station mapping
+              const resolved =
+                resolveAssetLocation(assetId);
+
               setForm((f) => ({
                 ...f,
                 assetId,
-                location: resolveAssetLocation(assetId),
+
+                // If mapping exists, use it.
+                // Otherwise create an editable empty location.
+                location:
+                  resolved || {
+                    sectionId: "",
+                    stationCode: "",
+                  },
               }));
             }}
           />
 
+          {/* Asset mapping status */}
           {form.assetId.trim() === "" ? (
             <div className="text-[10px] text-slate-400 mt-1">
-              Section and station are determined from the asset.
+              Section and station can be auto-filled from the asset.
             </div>
-          ) : form.location ? (
-            <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-              <span className="font-medium text-slate-600">
-                {form.location.sectionId}
-              </span>
-              <span className="text-slate-300">/</span>
-              <span className="font-medium text-slate-600">
-                {form.location.stationCode}
+          ) : form.location?.sectionId &&
+            form.location?.stationCode ? (
+            <div className="text-[10px] text-green-600 mt-1 flex items-center gap-1">
+              <span className="font-medium">
+                ✓ Auto-filled from asset
               </span>
             </div>
           ) : (
-            <div className="text-[10px] text-red-500 mt-1 flex items-center gap-1">
+            <div className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
               <AlertCircle size={10} />
-              Unknown asset — no section/station mapping found.
+              <span>
+                Asset not mapped — enter Section and Station manually.
+              </span>
             </div>
           )}
         </div>
 
-        {/* Section / Station (read-only, resolved from Asset ID) */}
+        {/* ==================================================
+            Section ID
+            Auto if possible, otherwise manual
+            ================================================== */}
+
         <div>
           <label className={labelClass}>
             Section ID
           </label>
 
           <input
-            className={cn(inputClass, "bg-slate-50 text-slate-500")}
+            className={inputClass}
             value={form.location?.sectionId || ""}
-            placeholder="Auto from asset"
-            disabled
-            readOnly
+            placeholder="Auto from asset or enter manually"
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                location: {
+                  ...(f.location || {}),
+                  sectionId:
+                    e.target.value.toUpperCase(),
+                },
+              }))
+            }
           />
         </div>
+
+        {/* ==================================================
+            Station Code
+            Auto if possible, otherwise manual
+            ================================================== */}
 
         <div>
           <label className={labelClass}>
@@ -251,11 +280,19 @@ function RequestForm({
           </label>
 
           <input
-            className={cn(inputClass, "bg-slate-50 text-slate-500")}
+            className={inputClass}
             value={form.location?.stationCode || ""}
-            placeholder="Auto from asset"
-            disabled
-            readOnly
+            placeholder="Auto from asset or enter manually"
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                location: {
+                  ...(f.location || {}),
+                  stationCode:
+                    e.target.value.toUpperCase(),
+                },
+              }))
+            }
           />
         </div>
 
@@ -342,6 +379,7 @@ function RequestForm({
             options={FLEXIBILITY_OPTIONS}
           />
         </div>
+
       </div>
 
       {/* ======================================================
@@ -388,6 +426,7 @@ function RequestForm({
             options={URGENCY_OPTIONS}
           />
         </div>
+
       </div>
 
       {/* ERROR */}
@@ -412,6 +451,7 @@ function RequestForm({
             : "Add Request"}
         </button>
       </div>
+
     </div>
   );
 }
@@ -428,6 +468,7 @@ function RequestTable({
   if (requests.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-slate-200 bg-white py-5 text-center">
+
         <ClipboardList
           size={26}
           className="text-slate-300"
@@ -440,6 +481,7 @@ function RequestTable({
         <div className="text-xs text-slate-400">
           Add a maintenance request above to get started.
         </div>
+
       </div>
     );
   }
@@ -584,6 +626,7 @@ function RequestTable({
         </tbody>
 
       </table>
+
     </div>
   );
 }
@@ -610,12 +653,19 @@ export default function BlockRequest({
 
   const validate = () => {
 
+    // Asset ID is still required
     if (!form.assetId.trim()) {
       return "Asset ID is required.";
     }
 
-    if (!form.location) {
-      return "Asset ID not recognized — can't resolve section/station.";
+    // Section ID can be auto-filled OR manually entered
+    if (!form.location?.sectionId?.trim()) {
+      return "Section ID is required.";
+    }
+
+    // Station Code can be auto-filled OR manually entered
+    if (!form.location?.stationCode?.trim()) {
+      return "Station Code is required.";
     }
 
     if (
@@ -656,21 +706,27 @@ export default function BlockRequest({
 
     if (editingId) {
 
+      // ======================================================
       // UPDATE EXISTING REQUEST
+      // ======================================================
+
       setRequests((prev) =>
         prev.map((r) =>
           r.id === editingId
             ? {
                 ...r,
                 ...form,
+
                 duration: Number(form.duration),
 
-                // Backend-named fields (candidate_generator.py /
-                // constraint_engine.py BlockRequest schema).
-                section_id: form.location?.sectionId || "",
-                station_code: form.location?.stationCode || "",
+                // Backend-named fields
+                section_id:
+                  form.location?.sectionId || "",
 
-                // Always keep status as Pending.
+                station_code:
+                  form.location?.stationCode || "",
+
+                // Always keep status Pending
                 status: "Pending",
               }
             : r
@@ -681,7 +737,10 @@ export default function BlockRequest({
 
     } else {
 
+      // ======================================================
       // ADD NEW REQUEST
+      // ======================================================
+
       setRequests((prev) => [
         ...prev,
 
@@ -692,18 +751,21 @@ export default function BlockRequest({
 
           duration: Number(form.duration),
 
-          // Backend-named fields (candidate_generator.py /
-          // constraint_engine.py BlockRequest schema) — resolved from
-          // the asset via assetStationMap, not typed by the user.
-          section_id: form.location?.sectionId || "",
-          station_code: form.location?.stationCode || "",
+          // Backend-named fields
+          // These can come from auto mapping OR manual entry.
+          section_id:
+            form.location?.sectionId || "",
 
-          // Backend/default field.
+          station_code:
+            form.location?.stationCode || "",
+
+          // Backend/default field
           status: "Pending",
         },
       ]);
     }
 
+    // Reset form after add/update
     setForm(EMPTY_FORM);
   };
 
@@ -727,13 +789,23 @@ export default function BlockRequest({
       assetId:
         target.assetId || "",
 
+      // Prefer saved backend values.
+      // If unavailable, try automatic asset mapping.
       location:
-        target.section_id && target.station_code
+        target.section_id || target.station_code
           ? {
-              sectionId: target.section_id,
-              stationCode: target.station_code,
+              sectionId:
+                target.section_id || "",
+
+              stationCode:
+                target.station_code || "",
             }
-          : resolveAssetLocation(target.assetId || ""),
+          : resolveAssetLocation(
+              target.assetId || ""
+            ) || {
+              sectionId: "",
+              stationCode: "",
+            },
 
       duration:
         target.duration !== undefined
@@ -816,18 +888,21 @@ export default function BlockRequest({
         </button>
 
         <button
-  type="button"
-  disabled={!canContinue}
-  onClick={() => onContinue?.(requests)}
-  className={cn(
-    "px-6 sm:px-7 py-2 sm:py-2.5 rounded-lg text-base sm:text-lg font-semibold border transition-all duration-200",
-    canContinue
-      ? "border-[#3a83f7] bg-[#3a83f7] text-white hover:bg-[#3275e6] hover:border-[#3275e6] shadow-sm"
-      : "border-red-300 bg-transparent text-red-400 cursor-not-allowed"
-  )}
->
-  Continue →
-</button>
+          type="button"
+          disabled={!canContinue}
+          onClick={() =>
+            onContinue?.(requests)
+          }
+          className={cn(
+            "px-6 sm:px-7 py-2 sm:py-2.5 rounded-lg text-base sm:text-lg font-semibold border transition-all duration-200",
+
+            canContinue
+              ? "border-[#3a83f7] bg-[#3a83f7] text-white hover:bg-[#3275e6] hover:border-[#3275e6] shadow-sm"
+              : "border-red-300 bg-transparent text-red-400 cursor-not-allowed"
+          )}
+        >
+          Continue →
+        </button>
 
       </div>
 
