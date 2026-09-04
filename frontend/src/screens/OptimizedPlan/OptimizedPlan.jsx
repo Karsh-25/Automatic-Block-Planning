@@ -11,8 +11,6 @@ import {
   Award,
   ListChecks,
   Info,
-  ChevronDown,
-  ChevronUp,
   MapPin,
   Wrench,
   Gauge,
@@ -363,31 +361,6 @@ function ConflictBreakdown({ breakdown }) {
 }
 
 // ============================================================
-// RAW RESPONSE (transparency — exactly what the backend returned)
-// ============================================================
-
-function RawResponsePanel({ plan }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-t border-slate-100 mt-4 pt-3">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700"
-      >
-        {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        {open ? "Hide raw backend response" : "View Plan Details (raw backend response)"}
-      </button>
-      {open && (
-        <pre className="mt-3 max-h-72 overflow-auto rounded-xl bg-slate-900 text-slate-100 text-[11px] leading-relaxed p-3">
-          {JSON.stringify(plan, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
 // SCHEDULED PLAN CARD
 // ============================================================
 
@@ -501,8 +474,6 @@ function ScheduledPlanCard({ plan }) {
           </span>
           <ConflictBreakdown breakdown={plan.rejected_conflict_breakdown} />
         </div>
-
-        <RawResponsePanel plan={plan} />
       </div>
     </div>
   );
@@ -565,8 +536,6 @@ function UnscheduledPlanCard({ plan }) {
             <div className="text-xs text-slate-400">No conflict breakdown was returned for this request.</div>
           )}
         </div>
-
-        <RawResponsePanel plan={plan} />
       </div>
     </div>
   );

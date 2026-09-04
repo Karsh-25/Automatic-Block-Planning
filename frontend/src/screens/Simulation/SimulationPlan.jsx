@@ -271,31 +271,6 @@ function AffectedTrainsList({ trains }) {
 }
 
 // ============================================================
-// RAW RESPONSE (transparency)
-// ============================================================
-
-function RawResponsePanel({ data }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border-t border-slate-100 mt-4 pt-3">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-700"
-      >
-        {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        {open ? "Hide raw backend response" : "View Simulation Details (raw backend response)"}
-      </button>
-      {open && (
-        <pre className="mt-3 max-h-72 overflow-auto rounded-xl bg-slate-900 text-slate-100 text-[11px] leading-relaxed p-3">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
 // PER-REQUEST SIMULATION CARD
 // ============================================================
 
@@ -367,8 +342,6 @@ function SimulationCard({ blockResult, plan, beforeEval, originalRequest }) {
             <AffectedTrainsList trains={blockResult.affected_trains} />
           </div>
         )}
-
-        <RawResponsePanel data={blockResult} />
       </div>
     </div>
   );
