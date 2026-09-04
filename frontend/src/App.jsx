@@ -5,8 +5,11 @@ import AiAnalysis from "./screens/AiAnalysis/AiAnalysis.jsx";
 import OptimizedPlan from "./screens/OptimizedPlan/OptimizedPlan.jsx";
 import SimulationPlan from "./screens/Simulation/SimulationPlan.jsx";
 import FinalPlan from "./screens/FinalPlan/FinalPlan.jsx";
+import { useAuth } from "./auth/AuthContext.jsx";
 
 export default function App() {
+  const { authFetch } = useAuth();
+
   const [step, setStep] = useState("upload");
 
   const [files, setFiles] = useState({});
@@ -41,8 +44,10 @@ export default function App() {
   // deriveSummary expect (see the "BACKEND SHAPE -> UI DERIVATION" block at
   // the top of AiAnalysis.jsx). No client-side aggregation needed here —
   // the backend already returns the final per-request evaluations.
+  // Uses authFetch (from AuthContext) so the request carries the logged-in
+  // person's token — the backend can now scope/attribute requests per user.
   const runAnalysis = async (blockRequests) => {
-    const response = await fetch("/api/analyze", {
+    const response = await authFetch("/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ requests: blockRequests }),
@@ -71,7 +76,7 @@ export default function App() {
   // No optimization logic runs in the browser — this only calls the
   // backend and returns exactly what it responds with.
   const runOptimize = async (blockRequests) => {
-    const response = await fetch("/api/optimize", {
+    const response = await authFetch("/api/optimize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ requests: blockRequests }),
@@ -104,7 +109,7 @@ export default function App() {
   //     limitations: [ ...simulator.SIMULATION_LIMITATIONS ] }
   // No simulation logic runs in the browser.
   const runSimulate = async (blockRequests) => {
-    const response = await fetch("/api/simulate", {
+    const response = await authFetch("/api/simulate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ requests: blockRequests }),

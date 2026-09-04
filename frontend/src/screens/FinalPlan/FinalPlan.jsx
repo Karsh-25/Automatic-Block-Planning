@@ -315,7 +315,6 @@ export default function FinalPlan({
     >
       <div className="flex items-center justify-between mt-3 mb-4">
         <div className="inline-flex items-center gap-2">
-          <span className="inline-flex items-center justify-center rounded-lg bg-indigo-600 text-white text-xs font-bold px-3 py-2">Step 6</span>
           <span className="text-lg font-semibold text-slate-800">Final Plan</span>
         </div>
         {ready && (

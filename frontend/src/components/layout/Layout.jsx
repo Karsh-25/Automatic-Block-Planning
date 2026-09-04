@@ -1,8 +1,9 @@
 import React from "react";
-import { CheckCircle2, Settings, LogOut } from "lucide-react";
+import { CheckCircle2, LogOut } from "lucide-react";
 import { NAV_ITEMS } from "../../config/workflow";
 import trainIcon from "../../assets/images/train-icon.png";
 import trainBanner from "../../assets/images/train-banner.png";
+import { useAuth } from "../../auth/AuthContext.jsx";
 
 /** Joins conditional className fragments, skipping falsy values. */
 export function cn(...parts) {
@@ -23,6 +24,7 @@ export function cn(...parts) {
  */
 export function Sidebar({ items = NAV_ITEMS, activeKey, completedKeys = [], onNavigate }) {
   const activeIndex = items.findIndex((item) => item.key === activeKey);
+  const { logout } = useAuth();
 
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-[#0a0f24] text-slate-300">
@@ -95,13 +97,7 @@ export function Sidebar({ items = NAV_ITEMS, activeKey, completedKeys = [], onNa
       <div className="mt-auto px-3 pb-6 pt-4 border-t border-white/5 space-y-1">
         <button
           type="button"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-white/5 hover:text-white transition"
-        >
-          <Settings size={17} />
-          Settings
-        </button>
-        <button
-          type="button"
+          onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-400 hover:bg-white/5 hover:text-white transition"
         >
           <LogOut size={17} />
@@ -117,10 +113,14 @@ export function Sidebar({ items = NAV_ITEMS, activeKey, completedKeys = [], onNa
 // ============================================================
 
 /**
- * @param {{ icon?: React.ComponentType, label: string, userName?: string }} props
+ * @param {{ icon?: React.ComponentType, label: string }} props
+ * userName is no longer a prop — it's read straight from the logged-in
+ * user via AuthContext, so every screen shows whoever's actually signed in.
  */
-export function Topbar({ icon: Icon, label, userName = "Pushkar" }) {
-  const userInitial = userName.trim().charAt(0).toUpperCase() || "P";
+export function Topbar({ icon: Icon, label }) {
+  const { user } = useAuth();
+  const userName = user?.name || user?.email || "Account";
+  const userInitial = userName.trim().charAt(0).toUpperCase() || "?";
 
   return (
     <header className="flex items-center justify-between px-4 sm:px-6 h-14 bg-white border-b border-slate-200 shrink-0">
