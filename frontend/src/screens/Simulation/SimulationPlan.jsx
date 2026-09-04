@@ -507,20 +507,37 @@ export default function SimulationPlan({
           ← Back
         </button>
 
-        <button
-          type="button"
-          disabled={isLoading || requests.length === 0}
-          onClick={handleRun}
-          className={cn(
-            "inline-flex items-center gap-2 px-6 sm:px-7 py-2 sm:py-2.5 rounded-lg text-base sm:text-lg font-semibold border transition-all duration-200",
-            !isLoading && requests.length > 0
-              ? "border-[#3a83f7] bg-[#3a83f7] text-white hover:bg-[#3275e6] hover:border-[#3275e6] shadow-sm"
-              : "border-slate-200 bg-transparent text-slate-300 cursor-not-allowed"
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={isLoading || requests.length === 0}
+            onClick={handleRun}
+            className={cn(
+              "inline-flex items-center gap-2 px-5 sm:px-6 py-2 sm:py-2.5 rounded-lg text-sm sm:text-base font-semibold border transition-all duration-200",
+              !isLoading && requests.length > 0
+                ? "border-slate-200 bg-white text-slate-700 hover:border-slate-300 shadow-sm"
+                : "border-slate-200 bg-transparent text-slate-300 cursor-not-allowed"
+            )}
+          >
+            {isLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+            {report ? "Re-run Simulation" : "Run Simulation"}
+          </button>
+
+          {report && onNavigate && (
+            <button
+              type="button"
+              onClick={() => onNavigate("final")}
+              className={cn(
+                "px-6 sm:px-7 py-2 sm:py-2.5 rounded-lg text-base sm:text-lg font-semibold border transition-all duration-200",
+                report
+                  ? "border-[#3a83f7] bg-[#3a83f7] text-white hover:bg-[#3275e6] hover:border-[#3275e6] shadow-sm"
+                  : "border-slate-200 bg-transparent text-slate-300 cursor-not-allowed"
+              )}
+            >
+              Continue to Final Plan →
+            </button>
           )}
-        >
-          {isLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-          {report ? "Re-run Simulation" : "Run Simulation"}
-        </button>
+        </div>
       </div>
 
       {requests.length === 0 && (

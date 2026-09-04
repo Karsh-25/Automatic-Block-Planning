@@ -4,6 +4,7 @@ import BlockRequest from "./screens/BlockRequest/BlockRequest.jsx";
 import AiAnalysis from "./screens/AiAnalysis/AiAnalysis.jsx";
 import OptimizedPlan from "./screens/OptimizedPlan/OptimizedPlan.jsx";
 import SimulationPlan from "./screens/Simulation/SimulationPlan.jsx";
+import FinalPlan from "./screens/FinalPlan/FinalPlan.jsx";
 
 export default function App() {
   const [step, setStep] = useState("upload");
@@ -208,6 +209,23 @@ export default function App() {
         }}
         completedKeys={completedSteps}
         onBack={() => setStep("optimize")}
+        onContinue={() => {
+          markCompleted("recommendation");
+          setStep("final");
+        }}
+        onNavigate={(key) => setStep(key)}
+      />
+    );
+  }
+
+  if (step === "final") {
+    return (
+      <FinalPlan
+        requests={requests}
+        optimization={optimization}
+        simulation={simulation}
+        completedKeys={completedSteps}
+        onBack={() => setStep("recommendation")}
         onNavigate={(key) => setStep(key)}
       />
     );
