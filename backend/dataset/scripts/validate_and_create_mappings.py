@@ -6,7 +6,7 @@ import pandas as pd
 # PATHS
 # ============================================================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 PROCESSED_DIR = BASE_DIR / "processed"
 MAPPING_DIR = BASE_DIR / "mapping"

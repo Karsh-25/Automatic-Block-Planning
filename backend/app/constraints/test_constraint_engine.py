@@ -420,9 +420,13 @@ def test_evaluate_candidate_aggregates_multiple_conflict_types():
 
 def test_load_existing_blocks_from_real_csv():
     blocks = load_existing_blocks(EXISTING_BLOCKS_CSV)
-    assert len(blocks) == 35
+    assert len(blocks) == 65000
+    # 2026 refresh: linked_block_request_id is nulled for every row in the
+    # corrected dataset (see known_issue.md #4) -- the raw dataset's own
+    # links only matched a real block_request_id 0.7% of the time by
+    # numeric-range coincidence, so keeping them would be misleading.
     null_linked = [b for b in blocks if b.linked_block_request_id is None]
-    assert len(null_linked) == 2
+    assert len(null_linked) == 65000
     print("PASS: test_load_existing_blocks_from_real_csv")
 
 
@@ -533,7 +537,12 @@ def test_real_data_demo_request():
 
 
 # --------------------------------------------------------------------------
-# Full integration: real dataset, all 60 requests, with reporting
+# Full integration: real dataset, all 60,000 requests, with reporting
+# (2026 refresh -- see known_issue.md #5: existing_blocks is filtered to
+# a single reference date by build_evaluation_context()'s default, which
+# is what makes this dataset produce feasible candidates at all. This test
+# has no CP-SAT/O(n^2) step, so running the full 60,000 requests here is
+# fine -- takes well under a minute.)
 # --------------------------------------------------------------------------
 
 def test_real_dataset_full_evaluation_with_report():
@@ -577,7 +586,7 @@ def test_real_dataset_full_evaluation_with_report():
                 rejected_operational += 1
 
     assert total_candidates == feasible_count + infeasible_count
-    assert len(requests) == 60
+    assert len(requests) == 60000
 
     print("PASS: test_real_dataset_full_evaluation_with_report")
     print()

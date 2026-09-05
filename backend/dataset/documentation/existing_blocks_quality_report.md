@@ -2,14 +2,14 @@
 
 ## Dataset Summary
 
-- Total records: 35
-- Total columns: 16
+- Total records: 65000
+- Total columns: 17
 
 ## Missing Values
 
 | Column | Missing Count |
 |---|---:|
-| linked_block_request_id | 2 |
+| linked_block_request_id | 65000 |
 
 ## Duplicate Existing Block IDs
 
@@ -54,14 +54,14 @@ Duplicate rows: 0
 
 |       |   duration_min |   start_min |   end_min |   calculated_duration_min |
 |:------|---------------:|------------:|----------:|--------------------------:|
-| count |          35    |       35    |     35    |                     35    |
-| mean  |          74.14 |      632.94 |    707.09 |                     74.14 |
-| std   |          32.32 |      422.42 |    423.9  |                     32.32 |
-| min   |          30    |        8    |     53    |                     30    |
-| 25%   |          45    |      271    |    361    |                     45    |
-| 50%   |          60    |      609    |    680    |                     60    |
-| 75%   |         105    |     1008.5  |   1098.5  |                    105    |
-| max   |         120    |     1305    |   1380    |                    120    |
+| count |       65000    |    65000    |  65000    |                  65000    |
+| mean  |          67.42 |      718.89 |    718.9  |                     67.42 |
+| std   |          28.26 |      414.82 |    414.52 |                     28.26 |
+| min   |          30    |        0    |      0    |                     30    |
+| 25%   |          45    |      360    |    360    |                     45    |
+| 50%   |          60    |      718    |    720    |                     60    |
+| 75%   |          90    |     1078    |   1076    |                     90    |
+| max   |         120    |     1439    |   1439    |                    120    |
 
 ## Data Preparation Notes
 

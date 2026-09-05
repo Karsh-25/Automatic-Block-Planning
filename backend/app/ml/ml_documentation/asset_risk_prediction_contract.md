@@ -135,10 +135,19 @@ Response: list of result dicts
 
 ---
 
-## Model Info
+## Model Info (2026 refresh — 65K dataset)
 
-- **Type:** Random Forest Regressor (scikit-learn)
+- **Type:** Linear Regression (scikit-learn), selected after comparing against
+  Random Forest, HistGradientBoosting, and XGBoost — it had the best
+  validation RMSE of the four candidates on this dataset (added model
+  complexity did not improve generalization here; `criticality` and
+  `condition_score` dominate the signal and the relationship is largely
+  linear once those are one-hot/passthrough encoded). See
+  `backend/app/ml/reports/phase3_evaluation_report.md` for the full
+  comparison table and `backend/app/ml/models/model_metadata.json` for
+  machine-readable details.
 - **Target:** `asset_risk_score` (regression, not classification — avoids leakage from `maintenance_priority`)
-- **Test set performance:** RMSE 6.30, MAE 5.48, R² 0.897
-- **Bucket accuracy:** 67.5% raw, but 12/13 misclassifications were within 8 points of a cutoff (i.e. borderline, not a genuine model error)
-- **Training data size:** 200 rows (160 train / 40 test, stratified by criticality)
+- **Test set performance:** RMSE 5.07, MAE 4.04, R² 0.874
+- **Bucket accuracy:** 74.8% raw; 96.1% of the remaining misclassifications were within 8 points of a cutoff (i.e. borderline, not a genuine model error)
+- **Training data size:** 65,000 rows (39,000 train / 13,000 validation / 13,000 test, stratified by criticality)
+- **Data note:** `asset_health_dataset` is a simulated/synthetic railway asset dataset, not real IR sensor telemetry — this is an ML-based asset risk **estimation prototype**, not a production failure-prediction system.

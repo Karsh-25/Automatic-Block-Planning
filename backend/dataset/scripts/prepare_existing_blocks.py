@@ -6,7 +6,7 @@ import pandas as pd
 # PROJECT PATHS
 # ============================================================
 
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 RAW_DIR = BASE_DIR / "raw"
 PROCESSED_DIR = BASE_DIR / "processed"
@@ -43,6 +43,7 @@ EXPECTED_COLUMNS = [
     "status",
     "operational_priority",
     "source",
+    "block_date",
 ]
 
 
@@ -58,6 +59,7 @@ STRING_COLUMNS = [
     "assigned_team",
     "status",
     "operational_priority",
+    "block_date",
     "source",
 ]
 

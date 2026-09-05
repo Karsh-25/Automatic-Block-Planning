@@ -21,8 +21,16 @@ CATEGORICAL_FEATURES = ["criticality", "asset_type"]
 X = df[NUMERIC_FEATURES + CATEGORICAL_FEATURES]
 y = df["asset_risk_score"]
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.20, random_state=42, stratify=X["criticality"]
+# NOTE: must mirror train_asset_risk_model.py's exact two-stage 60/20/20
+# split (same random_state) so this diagnostic evaluates the model on the
+# SAME held-out test rows it was never trained on -- a single 80/20 split
+# here would silently include rows the current model WAS trained on and
+# make the diagnosis meaningless.
+X_train, X_temp, y_train, y_temp = train_test_split(
+    X, y, test_size=0.40, random_state=42, stratify=X["criticality"]
+)
+X_val, X_test, y_val, y_test = train_test_split(
+    X_temp, y_temp, test_size=0.50, random_state=42, stratify=X_temp["criticality"]
 )
 
 model = joblib.load(MODEL_PATH)

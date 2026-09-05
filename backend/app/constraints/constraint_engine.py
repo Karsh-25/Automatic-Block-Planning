@@ -63,8 +63,8 @@ from __future__ import annotations
 
 import os
 from collections import defaultdict, namedtuple
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 
@@ -99,7 +99,16 @@ DEFAULT_CONSTRAINT_CONFIG: Dict[str, Any] = {
 
 @dataclass(frozen=True)
 class ExistingBlock:
-    """Typed representation of one row of existing_blocks_dataset.csv."""
+    """
+    Typed representation of one row of existing_blocks_dataset.csv.
+
+    `block_date` (added in the 2026 65K-row refresh -- see
+    known_issue.md #5): the calendar date ("YYYY-MM-DD") this committed
+    block occupies. None for datasets/fixtures that predate this field
+    (e.g. synthetic unit-test blocks), in which case date filtering is
+    skipped entirely and this block is always considered (old, single
+    recurring-day behavior).
+    """
 
     existing_block_id: str
     linked_block_request_id: Optional[str]
@@ -113,6 +122,7 @@ class ExistingBlock:
     assigned_team: str
     status: str
     operational_priority: str
+    block_date: Optional[str] = None
 
 
 # Lightweight record for a train's presence at one station (from the
@@ -130,11 +140,104 @@ class EvaluationContext:
     Bundles all reference data needed to evaluate candidates, so it can be
     loaded once and reused across many evaluate_candidate() calls instead
     of re-reading CSVs per candidate.
+
+    PERFORMANCE (2026 65K-scale dataset refresh):
+    `existing_blocks_by_location` and `existing_blocks_by_team` are
+    precomputed indices over `existing_blocks`, built once here. Without
+    them, `evaluate_candidate()` would re-scan the full `existing_blocks`
+    list (65,000 rows at the current dataset scale) with a fresh Python
+    list comprehension for every single candidate window of every single
+    request -- roughly 60,000 requests x ~13 candidates x 65,000 rows is
+    computationally infeasible (tens of billions of comparisons). The
+    indices let evaluate_candidate() narrow to the handful of existing
+    blocks that could possibly matter (same section+station, or same
+    team) via an O(1) dict lookup before handing that small subset to the
+    existing check_* functions below, which still do their own filtering
+    internally (so behavior/results are byte-for-byte identical to
+    scanning the full list -- this is a pure speed optimization, not a
+    semantic change). The check_* functions themselves are unchanged and
+    keep accepting a plain `List[ExistingBlock]`, so their existing unit
+    tests (which construct small synthetic lists directly) are unaffected.
+
+    A SECOND-LEVEL index (`_team_sorted_starts` / `_team_sorted_blocks`,
+    built lazily below) further narrows the by-team candidate set using a
+    binary search over each team's committed start times. This matters
+    because, at the current dataset scale, only 4 distinct teams exist,
+    so `existing_blocks_by_team` alone only narrows ~65,000 rows to
+    ~16,000 per team -- still too many to brute-force-scan per candidate.
+    The binary-search narrowing exploits the fact that two windows can
+    only overlap if their start times are within
+    (candidate_duration + the longest existing block's duration) minutes
+    of each other, which -- combined with `_circular_overlap_minutes`'s
+    existing 3-offset (prev/same/next day) wraparound handling -- again
+    produces results identical to a full scan, just without visiting
+    every row. See `_narrow_by_team_time_window()` below.
     """
 
     existing_blocks: List[ExistingBlock]
     station_train_index: Dict[str, List[TrainMovement]]
     config: Dict[str, Any]
+    existing_blocks_by_location: Dict[Tuple[str, str], List[ExistingBlock]] = field(
+        default_factory=dict
+    )
+    existing_blocks_by_team: Dict[str, List[ExistingBlock]] = field(
+        default_factory=dict
+    )
+
+    def __post_init__(self) -> None:
+        if not self.existing_blocks_by_location and self.existing_blocks:
+            by_location: Dict[Tuple[str, str], List[ExistingBlock]] = defaultdict(list)
+            by_team: Dict[str, List[ExistingBlock]] = defaultdict(list)
+            for eb in self.existing_blocks:
+                by_location[(eb.section_id, eb.station_code)].append(eb)
+                by_team[eb.assigned_team].append(eb)
+            self.existing_blocks_by_location = dict(by_location)
+            self.existing_blocks_by_team = dict(by_team)
+
+        # Second-level per-team time index (see class docstring). Built
+        # lazily/always here since it's cheap relative to loading the CSV,
+        # and it's derived purely from existing_blocks_by_team above.
+        self._max_existing_duration = max(
+            (eb.duration_min for eb in self.existing_blocks), default=0
+        )
+        self._team_sorted_starts: Dict[str, List[int]] = {}
+        self._team_sorted_blocks: Dict[str, List[ExistingBlock]] = {}
+        for team, blocks in self.existing_blocks_by_team.items():
+            entries = []
+            for eb in blocks:
+                for offset in (-MINUTES_PER_DAY, 0, MINUTES_PER_DAY):
+                    entries.append((eb.start_minutes + offset, eb))
+            entries.sort(key=lambda pair: pair[0])
+            self._team_sorted_starts[team] = [e[0] for e in entries]
+            self._team_sorted_blocks[team] = [e[1] for e in entries]
+
+    def narrow_by_team_time_window(
+        self, team: str, start_minutes: int, duration_min: int
+    ) -> List[ExistingBlock]:
+        """
+        Return the (deduplicated) subset of `existing_blocks_by_team[team]`
+        whose start time is close enough to [start_minutes, start_minutes +
+        duration_min) to possibly overlap it, using binary search instead
+        of scanning every committed block for that team. Falls back to the
+        plain (unsorted) by-team list if the time index wasn't built.
+        """
+        starts = self._team_sorted_starts.get(team) if hasattr(self, "_team_sorted_starts") else None
+        if not starts:
+            return self.existing_blocks_by_team.get(team, [])
+
+        import bisect
+        lo_val = start_minutes - self._max_existing_duration
+        hi_val = start_minutes + duration_min
+        lo = bisect.bisect_left(starts, lo_val)
+        hi = bisect.bisect_right(starts, hi_val)
+
+        blocks = self._team_sorted_blocks[team]
+        seen: Dict[str, ExistingBlock] = {}
+        for eb in blocks[lo:hi]:
+            seen[eb.existing_block_id] = eb  # dedupe (an eb may appear via
+            # more than one of the -1440/0/+1440 offset replicas near
+            # midnight boundaries)
+        return list(seen.values())
 
 
 # ==========================================================================
@@ -200,13 +303,25 @@ def _parse_hhmm_to_minutes(hhmm: str) -> int:
     return hours * 60 + minutes
 
 
-def load_existing_blocks(csv_path: str) -> List[ExistingBlock]:
+def load_existing_blocks(
+    csv_path: str, reference_date: Optional[str] = None
+) -> List[ExistingBlock]:
     """
     Load existing_blocks_dataset.csv into a list of ExistingBlock objects.
 
-    `linked_block_request_id` may be null in the source data (2 of 35 rows
-    in the verified dataset) — those become None, representing existing
-    blocks that were not raised from a tracked block request.
+    `linked_block_request_id` may be null in the source data -- those
+    become None, representing existing blocks that were not raised from a
+    tracked block request.
+
+    `reference_date` (2026 refresh, see known_issue.md #5): if the CSV has
+    a `block_date` column AND `reference_date` is given ("YYYY-MM-DD" or
+    the sentinel "latest" to auto-pick the most recent date present),
+    ONLY rows matching that date are returned -- see EvaluationContext's
+    docstring for why this matters at the current 65,000-row dataset
+    scale. If the CSV has no `block_date` column (older/small datasets,
+    or synthetic test fixtures), this parameter has no effect and every
+    row is returned, preserving the original single-recurring-day
+    behavior exactly.
     """
     df = pd.read_csv(csv_path)
 
@@ -216,6 +331,12 @@ def load_existing_blocks(csv_path: str) -> List[ExistingBlock]:
             f"existing_blocks_dataset.csv is missing required columns: "
             f"{missing_columns}. Found columns: {list(df.columns)}"
         )
+
+    has_dates = "block_date" in df.columns
+    if has_dates and reference_date is not None:
+        if reference_date == "latest":
+            reference_date = str(df["block_date"].max())
+        df = df[df["block_date"] == reference_date].reset_index(drop=True)
 
     blocks: List[ExistingBlock] = []
     for _, row in df.iterrows():
@@ -238,6 +359,7 @@ def load_existing_blocks(csv_path: str) -> List[ExistingBlock]:
                 assigned_team=str(row["assigned_team"]),
                 status=str(row["status"]),
                 operational_priority=str(row["operational_priority"]),
+                block_date=(str(row["block_date"]) if has_dates else None),
             )
         )
     return blocks
@@ -576,11 +698,27 @@ def evaluate_candidate(
     conflicts: List[Dict[str, Any]] = []
     conflicts += check_duration_constraint(candidate, context.config)
     conflicts += check_time_window_constraint(candidate, context.config)
-    conflicts += check_existing_block_conflict(candidate, request, context.existing_blocks)
-    conflicts += check_resource_conflict(candidate, request, context.existing_blocks)
+
+    # PERFORMANCE: narrow to the small subset of existing_blocks that could
+    # possibly conflict via O(1) index lookups (see EvaluationContext
+    # docstring) instead of handing the check_* functions the full
+    # existing_blocks list (65,000 rows at current dataset scale) to
+    # rescan from scratch for every candidate. Falls back to the full list
+    # if the index wasn't built (e.g. a context constructed directly by a
+    # test with existing_blocks_by_location left empty) so behavior is
+    # identical either way.
+    location_key = (request.section_id, request.station_code)
+    by_location = context.existing_blocks_by_location.get(location_key, []) \
+        if context.existing_blocks_by_location else context.existing_blocks
+    by_team = context.narrow_by_team_time_window(
+        request.required_team, candidate.start_minutes, candidate.duration_min
+    ) if context.existing_blocks_by_team else context.existing_blocks
+
+    conflicts += check_existing_block_conflict(candidate, request, by_location)
+    conflicts += check_resource_conflict(candidate, request, by_team)
     conflicts += check_train_conflict(candidate, request, context.station_train_index)
     conflicts += check_operational_constraints(
-        candidate, request, context.existing_blocks, context.config
+        candidate, request, by_location, context.config
     )
 
     return {
@@ -607,18 +745,29 @@ def build_evaluation_context(
     existing_blocks_csv_path: str,
     train_timetable_csv_path: str,
     config: Optional[Dict[str, Any]] = None,
+    reference_date: Optional[str] = "latest",
 ) -> EvaluationContext:
     """
     Convenience constructor: loads both reference datasets once and bundles
     them with a config into an EvaluationContext ready for repeated use
     across many evaluate_candidate() calls.
+
+    `reference_date` (2026 refresh): forwarded to load_existing_blocks().
+    Defaults to "latest" (auto-pick the most recent `block_date` present),
+    which is the correct default for the current 65,000-row dataset (see
+    known_issue.md #5 and EvaluationContext's docstring). Pass an explicit
+    "YYYY-MM-DD" to evaluate against a different day, or None to disable
+    date filtering entirely (only meaningful for datasets/fixtures that
+    have no `block_date` column, where it's a no-op anyway).
     """
     resolved_config = dict(DEFAULT_CONSTRAINT_CONFIG)
     if config:
         resolved_config.update(config)
 
     return EvaluationContext(
-        existing_blocks=load_existing_blocks(existing_blocks_csv_path),
+        existing_blocks=load_existing_blocks(
+            existing_blocks_csv_path, reference_date=reference_date
+        ),
         station_train_index=build_station_train_index(train_timetable_csv_path),
         config=resolved_config,
     )

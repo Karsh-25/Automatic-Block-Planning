@@ -1,0 +1,169 @@
+{
+  "model_name": "LinearRegression",
+  "model_version": "2.0.0",
+  "target": "asset_risk_score",
+  "feature_names_raw": [
+    "age_years",
+    "condition_score",
+    "failure_count_24m",
+    "days_since_last_maintenance",
+    "usage_percent",
+    "criticality",
+    "asset_type"
+  ],
+  "feature_names_encoded": [
+    "age_years",
+    "condition_score",
+    "failure_count_24m",
+    "days_since_last_maintenance",
+    "usage_percent",
+    "criticality_Critical",
+    "criticality_High",
+    "criticality_Low",
+    "criticality_Medium",
+    "asset_type_Bridge",
+    "asset_type_Level Crossing",
+    "asset_type_OHE",
+    "asset_type_Point Machine",
+    "asset_type_Signal",
+    "asset_type_Track"
+  ],
+  "excluded_leakage_fields": [
+    "asset_id",
+    "section_id",
+    "nearest_station_code",
+    "maintenance_priority",
+    "asset_risk_score"
+  ],
+  "dataset_source": "dataset/processed/asset_health_clean.csv",
+  "dataset_name": "asset_health_dataset_65000 (2026 refresh)",
+  "final_training_record_count": 65000,
+  "split_sizes": {
+    "train": 39000,
+    "validation": 13000,
+    "test": 13000
+  },
+  "split_strategy": "random, stratified on criticality (60/20/20)",
+  "validation_metrics_all_candidates": {
+    "LinearRegression": {
+      "rmse": 5.025506743952963,
+      "mae": 3.988563250007222,
+      "r2": 0.8783340966937312,
+      "batch_inference_ms_total": 9.065922999980103,
+      "single_prediction_latency_ms": 2.808591000018623,
+      "n": 13000,
+      "train_time_s": 0.06702419000004056
+    },
+    "RandomForest": {
+      "rmse": 5.166388952723649,
+      "mae": 4.093233596811932,
+      "r2": 0.8714170566951931,
+      "batch_inference_ms_total": 351.2978719999751,
+      "single_prediction_latency_ms": 15.864367000006041,
+      "n": 13000,
+      "train_time_s": 22.292965786000025
+    },
+    "HistGradientBoosting": {
+      "rmse": 5.078291677091626,
+      "mae": 4.033053315736436,
+      "r2": 0.8757648617892038,
+      "batch_inference_ms_total": 67.92515199998661,
+      "single_prediction_latency_ms": 3.5736159999828487,
+      "n": 13000,
+      "train_time_s": 0.47915905900003963
+    },
+    "XGBoost": {
+      "rmse": 5.098479736349757,
+      "mae": 4.0429319768025325,
+      "r2": 0.8747751385788916,
+      "batch_inference_ms_total": 76.29284600000119,
+      "single_prediction_latency_ms": 3.5033930000167857,
+      "n": 13000,
+      "train_time_s": 1.128756214999953
+    }
+  },
+  "selected_model_reason": "Lowest validation RMSE (5.026) among ['LinearRegression', 'RandomForest', 'HistGradientBoosting', 'XGBoost']; latency is sub-millisecond for all candidates so it was not a differentiator here.",
+  "final_test_metrics": {
+    "rmse": 5.073354521435364,
+    "mae": 4.043306344024734,
+    "r2": 0.8741866780138688,
+    "single_prediction_latency_ms": 2.2914959999980056,
+    "downstream_bucket_accuracy": 0.7483076923076923,
+    "bucket_misclassifications_within_8pts_of_cutoff_share": 0.9614914425427873
+  },
+  "feature_importance": [
+    {
+      "feature": "criticality_Critical",
+      "importance": 17.98037711001019
+    },
+    {
+      "feature": "criticality_Low",
+      "importance": 17.062361560952255
+    },
+    {
+      "feature": "criticality_Medium",
+      "importance": 6.950779673805862
+    },
+    {
+      "feature": "criticality_High",
+      "importance": 6.032764124747933
+    },
+    {
+      "feature": "failure_count_24m",
+      "importance": 1.1151054422911078
+    },
+    {
+      "feature": "condition_score",
+      "importance": 0.3019866512560726
+    },
+    {
+      "feature": "asset_type_Level Crossing",
+      "importance": 0.10944114555187763
+    },
+    {
+      "feature": "age_years",
+      "importance": 0.07418186613418615
+    },
+    {
+      "feature": "asset_type_Point Machine",
+      "importance": 0.06304748549969395
+    },
+    {
+      "feature": "usage_percent",
+      "importance": 0.061151037482278486
+    },
+    {
+      "feature": "asset_type_Bridge",
+      "importance": 0.05756195048030554
+    },
+    {
+      "feature": "asset_type_Track",
+      "importance": 0.043235829197949674
+    },
+    {
+      "feature": "asset_type_Signal",
+      "importance": 0.03019279409406571
+    },
+    {
+      "feature": "days_since_last_maintenance",
+      "importance": 0.018129000466214625
+    },
+    {
+      "feature": "asset_type_OHE",
+      "importance": 0.0018747446757614492
+    }
+  ],
+  "preprocessing": {
+    "numeric": "passthrough (no scaling -- tree/boosting models used; LinearRegression candidate is not scale-sensitive to ranking of RMSE across candidates since it's compared on the same unscaled inputs as the others for a fair like-for-like comparison)",
+    "categorical": "OneHotEncoder(handle_unknown='ignore')"
+  },
+  "training_date": "2026-09-05T08:05:31.369536",
+  "library_versions": {
+    "python": "3.12.3",
+    "scikit_learn": "1.8.0",
+    "xgboost": "3.4.1",
+    "pandas": "3.0.2",
+    "numpy": "2.4.4"
+  },
+  "honesty_note": "asset_health_dataset_65000.csv is a simulated/synthetic railway asset dataset (per its data dictionary), not real IR sensor telemetry. This is an ML-based asset risk estimation prototype trained on the available railway asset dataset, not a production failure-prediction system."
+}

@@ -18,6 +18,7 @@ scheduled or recorded in the system.
 | status | categorical | Current status of block | Standardized text |
 | operational_priority | categorical | Operational importance of block | Standardized text |
 | source | categorical | Source of block information | Standardized text |
+| block_date | date (YYYY-MM-DD) | Calendar date this block occupies | **Added in the 2026 65K-row refresh — not present in the original source file.** The source data had no date field at all; every existing block was implicitly treated as recurring on a single day. At 65,000 rows across only 4 teams, that made every team ~760x overbooked simultaneously (see `known_issue.md` #5). Dates were assigned uniformly at random (fixed seed, reproducible) across a ~2.7-year window ending 2026-09-05. The backend (`build_evaluation_context(..., reference_date="latest")`) filters to only the most recent date's ~74 rows for conflict-checking, restoring a realistic daily density; the full multi-year history remains in this file for audit and any future date-aware extension. |
 
 ## Derived Fields
 

@@ -211,21 +211,23 @@ def test_helper_parsers_directly():
 
 
 # --------------------------------------------------------------------------
-# Integration test against the REAL dataset
+# Integration test against the REAL dataset (2026 refresh: 60,000 rows)
 # --------------------------------------------------------------------------
 
-def test_real_dataset_all_60_requests_generate_without_error():
+def test_real_dataset_all_60000_requests_generate_without_error():
     requests = load_block_requests(DATASET_PATH)
-    assert len(requests) == 60
+    assert len(requests) == 60000
 
     all_candidates = generate_candidates_for_all_requests(requests)
-    assert len(all_candidates) == 60
+    assert len(all_candidates) == 60000
 
     # Every request must produce at least 1 candidate window
     for request_id, candidates in all_candidates.items():
         assert len(candidates) >= 1, f"{request_id} produced zero candidates"
 
     # Spot-check BR-0001: Fixed, 18:45, 75 min -> exactly 1 candidate
+    # (the new 60,000-row dataset preserves the original first 60 rows
+    # unchanged, so this legacy spot-check still holds)
     br_0001 = all_candidates["BR-0001"]
     assert len(br_0001) == 1
     assert br_0001[0].start_time == "18:45"
@@ -237,7 +239,7 @@ def test_real_dataset_all_60_requests_generate_without_error():
     assert br_0002[0].start_time == "10:45"
     assert br_0002[-1].start_time == "11:45"
 
-    print("PASS: test_real_dataset_all_60_requests_generate_without_error")
+    print("PASS: test_real_dataset_all_60000_requests_generate_without_error")
 
     # Print a small summary for manual sanity-checking
     total_candidates = sum(len(c) for c in all_candidates.values())

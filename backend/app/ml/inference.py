@@ -1,6 +1,14 @@
 """
 Phase 4: Inference function for asset_risk_score prediction.
 Includes a borderline confidence flag near bucket cutoffs.
+
+MODEL (2026 refresh): trained offline in
+backend/app/ml/train_asset_risk_model.py on the 65,000-row
+asset_health_dataset (see backend/app/ml/models/model_metadata.json and
+backend/app/ml/reports/phase3_evaluation_report.md for full training
+details, model comparison, and metrics). The saved artifact is a complete
+scikit-learn Pipeline (preprocessing + regressor) loaded ONCE below and
+reused for every prediction -- training never happens at request time.
 """
 
 import pandas as pd

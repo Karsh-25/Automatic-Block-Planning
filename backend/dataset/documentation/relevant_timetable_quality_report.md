@@ -3,10 +3,10 @@
 ## Summary
 
 - Original timetable rows: 69006
-- Relevant timetable rows: 3656
-- Relevant station codes: 42
-- Unique trains in subset: 1530
-- Unique stations in subset: 42
+- Relevant timetable rows: 61831
+- Relevant station codes: 2412
+- Unique trains in subset: 2804
+- Unique stations in subset: 2412
 
 ## Coverage Validation
 
