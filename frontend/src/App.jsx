@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Upload from "./screens/Upload/Upload.jsx";
 import BlockRequest from "./screens/BlockRequest/BlockRequest.jsx";
 import AiAnalysis from "./screens/AiAnalysis/AiAnalysis.jsx";
@@ -6,11 +6,30 @@ import OptimizedPlan from "./screens/OptimizedPlan/OptimizedPlan.jsx";
 import SimulationPlan from "./screens/Simulation/SimulationPlan.jsx";
 import FinalPlan from "./screens/FinalPlan/FinalPlan.jsx";
 import { useAuth } from "./auth/AuthContext.jsx";
+import { PageShell } from "./components/layout/Layout";
+import { UploadCloud, ClipboardList, Cpu, CalendarClock, Activity, CheckCircle2 } from "lucide-react";
+
+// Canonical left-to-right order of the workflow. Used only to figure out
+// whether a step change is "forward" or "backward" so the slide direction
+// matches — e.g. jumping straight to "optimize" from the sidebar still
+// slides in from the right, and going Back always slides in from the left.
+const STEP_ORDER = ["upload", "request", "analysis", "optimize", "recommendation", "final"];
 
 export default function App() {
   const { authFetch } = useAuth();
 
   const [step, setStep] = useState("upload");
+  // +1 = moving forward through STEP_ORDER, -1 = moving backward.
+  // Ref (not state) because we only need it read at the moment of the
+  // transition, not to trigger a render.
+  const directionRef = useRef(1);
+
+  const goToStep = (nextStep) => {
+    const currentIndex = STEP_ORDER.indexOf(step);
+    const nextIndex = STEP_ORDER.indexOf(nextStep);
+    directionRef.current = nextIndex >= currentIndex ? 1 : -1;
+    setStep(nextStep);
+  };
 
   const [files, setFiles] = useState({});
   const [requests, setRequestsRaw] = useState([]);
@@ -127,114 +146,144 @@ export default function App() {
     return response.json();
   };
 
-  if (step === "upload") {
-    return (
-      <Upload
-        files={files}
-        setFiles={setFiles}
-        completedKeys={completedSteps}
-        onContinue={() => {
-          markCompleted("upload");
-          setStep("request");
-        }}
-        onNavigate={(key) => setStep(key)}
-      />
-    );
-  }
+  // Same six branches as before, just reading from `step` — the actual
+  // rendering/wrapping in AnimatePresence happens once, below, so none of
+  // this needs to change when screens are added or reordered.
+  const renderScreen = () => {
+    if (step === "upload") {
+      return (
+        <Upload
+          files={files}
+          setFiles={setFiles}
+          completedKeys={completedSteps}
+          onContinue={() => {
+            markCompleted("upload");
+            goToStep("request");
+          }}
+          onNavigate={(key) => goToStep(key)}
+        />
+      );
+    }
 
-  if (step === "request") {
-    return (
-      <BlockRequest
-        requests={requests}
-        setRequests={setRequests}
-        completedKeys={completedSteps}
-        onBack={() => setStep("upload")}
-        onContinue={() => {
-          markCompleted("request");
-          setStep("analysis");
-        }}
-        onNavigate={(key) => setStep(key)}
-      />
-    );
-  }
+    if (step === "request") {
+      return (
+        <BlockRequest
+          requests={requests}
+          setRequests={setRequests}
+          completedKeys={completedSteps}
+          onBack={() => goToStep("upload")}
+          onContinue={() => {
+            markCompleted("request");
+            goToStep("analysis");
+          }}
+          onNavigate={(key) => goToStep(key)}
+        />
+      );
+    }
 
-  if (step === "analysis") {
-    return (
-      <AiAnalysis
-        requests={requests}
-        analysis={analysis}
-        onAnalyze={async (blockRequests) => {
-          const result = await runAnalysis(blockRequests);
-          setAnalysis(result);
-          return result;
-        }}
-        completedKeys={completedSteps}
-        onBack={() => setStep("request")}
-        onContinue={() => {
-          markCompleted("analysis");
-          setStep("optimize");
-        }}
-        onNavigate={(key) => setStep(key)}
-      />
-    );
-  }
+    if (step === "analysis") {
+      return (
+        <AiAnalysis
+          requests={requests}
+          analysis={analysis}
+          onAnalyze={async (blockRequests) => {
+            const result = await runAnalysis(blockRequests);
+            setAnalysis(result);
+            return result;
+          }}
+          completedKeys={completedSteps}
+          onBack={() => goToStep("request")}
+          onContinue={() => {
+            markCompleted("analysis");
+            goToStep("optimize");
+          }}
+          onNavigate={(key) => goToStep(key)}
+        />
+      );
+    }
 
-  if (step === "optimize") {
-    return (
-      <OptimizedPlan
-        requests={requests}
-        optimization={optimization}
-        onOptimize={async (blockRequests) => {
-          const result = await runOptimize(blockRequests);
-          setOptimization(result);
-          return result;
-        }}
-        completedKeys={completedSteps}
-        onBack={() => setStep("analysis")}
-        onContinue={() => {
-          markCompleted("optimize");
-          setStep("recommendation");
-        }}
-        onNavigate={(key) => setStep(key)}
-      />
-    );
-  }
+    if (step === "optimize") {
+      return (
+        <OptimizedPlan
+          requests={requests}
+          optimization={optimization}
+          onOptimize={async (blockRequests) => {
+            const result = await runOptimize(blockRequests);
+            setOptimization(result);
+            return result;
+          }}
+          completedKeys={completedSteps}
+          onBack={() => goToStep("analysis")}
+          onContinue={() => {
+            markCompleted("optimize");
+            goToStep("recommendation");
+          }}
+          onNavigate={(key) => goToStep(key)}
+        />
+      );
+    }
 
-  if (step === "recommendation") {
-    return (
-      <SimulationPlan
-        requests={requests}
-        analysis={analysis}
-        optimization={optimization}
-        simulation={simulation}
-        onSimulate={async (blockRequests) => {
-          const result = await runSimulate(blockRequests);
-          setSimulation(result);
-          return result;
-        }}
-        completedKeys={completedSteps}
-        onBack={() => setStep("optimize")}
-        onContinue={() => {
-          markCompleted("recommendation");
-          setStep("final");
-        }}
-        onNavigate={(key) => setStep(key)}
-      />
-    );
-  }
+    if (step === "recommendation") {
+      return (
+        <SimulationPlan
+          requests={requests}
+          analysis={analysis}
+          optimization={optimization}
+          simulation={simulation}
+          onSimulate={async (blockRequests) => {
+            const result = await runSimulate(blockRequests);
+            setSimulation(result);
+            return result;
+          }}
+          completedKeys={completedSteps}
+          onBack={() => goToStep("optimize")}
+          onContinue={() => {
+            markCompleted("recommendation");
+            goToStep("final");
+          }}
+          onNavigate={(key) => goToStep(key)}
+        />
+      );
+    }
 
-  if (step === "final") {
-    return (
-      <FinalPlan
-        requests={requests}
-        optimization={optimization}
-        simulation={simulation}
-        completedKeys={completedSteps}
-        onBack={() => setStep("recommendation")}
-        onNavigate={(key) => setStep(key)}
-      />
-    );
-  }
+    if (step === "final") {
+      return (
+        <FinalPlan
+          requests={requests}
+          optimization={optimization}
+          simulation={simulation}
+          completedKeys={completedSteps}
+          onBack={() => goToStep("recommendation")}
+          onNavigate={(key) => goToStep(key)}
+        />
+      );
+    }
 
-  return null;
+    return null;
+  };
+
+  const SCREEN_META = {
+    upload: { icon: UploadCloud, label: "Upload / Select Railway Data" },
+    request: { icon: ClipboardList, label: "Create Block Request" },
+    analysis: { icon: Cpu, label: "AI Analyses the Network" },
+    optimize: { icon: CalendarClock, label: "Generate Optimal Plan" },
+    recommendation: { icon: Activity, label: "Simulate & Validate Plan" },
+    final: { icon: CheckCircle2, label: "Final Plan" },
+  };
+
+  const screenMeta = SCREEN_META[step];
+
+  return (
+    <PageShell
+      activeKey={step}
+      onNavigate={goToStep}
+      completedKeys={completedSteps}
+      topbarIcon={screenMeta.icon}
+      topbarLabel={screenMeta.label}
+      transitionKey={step}
+      direction={directionRef.current}
+    >
+      {renderScreen()}
+    </PageShell>
+  );
 }

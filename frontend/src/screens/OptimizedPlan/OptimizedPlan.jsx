@@ -15,7 +15,7 @@ import {
   Wrench,
   Gauge,
 } from "lucide-react";
-import { PageShell, HeroBanner, cn } from "../../components/layout/Layout";
+import { HeroBanner, cn } from "../../components/layout/Layout";
 
 // ============================================================
 // BACKEND SHAPE -> UI DERIVATION
@@ -630,13 +630,7 @@ export default function OptimizedPlan({
   const plans = useMemo(() => result?.plans || [], [result]);
 
   return (
-    <PageShell
-      activeKey="optimize"
-      onNavigate={onNavigate}
-      completedKeys={completedKeys}
-      topbarIcon={CalendarClock}
-      topbarLabel="Generate Optimal Plan"
-    >
+    <>
       <HeroBanner
         title="Generate Optimal Plan"
         subtitle="The OR-Tools optimizer picks the single best feasible window for each block request."
@@ -715,6 +709,6 @@ export default function OptimizedPlan({
           </div>
         </>
       ) : null}
-    </PageShell>
+    </>
   );
 }

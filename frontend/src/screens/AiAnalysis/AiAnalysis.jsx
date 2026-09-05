@@ -10,7 +10,7 @@ import {
   Loader2,
   Sparkles,
 } from "lucide-react";
-import { PageShell, HeroBanner, cn } from "../../components/layout/Layout";
+import { HeroBanner, cn } from "../../components/layout/Layout";
 
 // ============================================================
 // BACKEND SHAPE -> UI DERIVATION
@@ -679,13 +679,7 @@ export default function AiAnalysis({
   const summary = useMemo(() => (result ? deriveSummary(result) : ""), [result]);
 
   return (
-    <PageShell
-      activeKey="analysis"
-      onNavigate={onNavigate}
-      completedKeys={completedKeys}
-      topbarIcon={Cpu}
-      topbarLabel="AI Analyses the Network"
-    >
+    <>
       <HeroBanner
         title="AI Analyses the Network"
         subtitle="Analyzing requests, train movements, assets and constraints."
@@ -773,6 +767,6 @@ export default function AiAnalysis({
           />
         </>
       )}
-    </PageShell>
+    </>
   );
 }

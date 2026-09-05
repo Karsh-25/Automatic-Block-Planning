@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 
 import {
-  PageShell,
   HeroBanner,
   cn,
 } from "../../components/layout/Layout";
@@ -862,13 +861,7 @@ export default function BlockRequest({
   // ==========================================================
 
   return (
-    <PageShell
-      activeKey="request"
-      onNavigate={onNavigate}
-      completedKeys={completedKeys}
-      topbarIcon={ClipboardList}
-      topbarLabel="Create Block Request"
-    >
+    <>
 
       <HeroBanner
         title="Create Block Request"
@@ -926,6 +919,6 @@ export default function BlockRequest({
         />
       </div>
 
-    </PageShell>
+    </>
   );
 }

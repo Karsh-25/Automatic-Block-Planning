@@ -16,7 +16,7 @@ import {
   Info,
   MapPin,
 } from "lucide-react";
-import { PageShell, cn } from "../../components/layout/Layout";
+import { cn } from "../../components/layout/Layout";
 
 // Step 6 intentionally does not invent a separate "final-plan" API.
 // It renders the real POST /api/optimize and POST /api/simulate responses
@@ -306,13 +306,7 @@ export default function FinalPlan({
   const ready = Boolean(optimization && simulation);
 
   return (
-    <PageShell
-      activeKey="final"
-      onNavigate={onNavigate}
-      completedKeys={completedKeys}
-      topbarIcon={CheckCircle2}
-      topbarLabel="Final Plan"
-    >
+    <>
       <div className="flex items-center justify-between mt-3 mb-4">
         <div className="inline-flex items-center gap-2">
           <span className="text-lg font-semibold text-slate-800">Final Plan</span>
@@ -404,6 +398,6 @@ export default function FinalPlan({
           </div>
         </>
       )}
-    </PageShell>
+    </>
   );
 }

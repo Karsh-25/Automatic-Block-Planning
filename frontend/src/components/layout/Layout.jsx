@@ -234,17 +234,44 @@ export function HeroBanner({ title, subtitle }) {
 // PAGE SHELL (Aligned Container Layout)
 // ============================================================
 
-export function PageShell({ activeKey, onNavigate, completedKeys, topbarIcon, topbarLabel, children }) {
+export function PageShell({
+  activeKey,
+  onNavigate,
+  completedKeys,
+  topbarIcon,
+  topbarLabel,
+  transitionKey,
+  direction = 1,
+  children,
+}) {
+  const slideVariants = {
+    enter: (dir) => ({ x: dir > 0 ? "100%" : "-100%", opacity: 0.98 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir) => ({ x: dir > 0 ? "-100%" : "100%", opacity: 0.98 }),
+  };
+
   return (
     <div className="flex h-screen bg-[#F4F6FE] p-4 gap-2 font-['Chakra_Petch'] overflow-hidden">
-      {/* LEFT SIDEBAR */}
       <Sidebar activeKey={activeKey} onNavigate={onNavigate} completedKeys={completedKeys} />
 
-      {/* RIGHT CONTENT PANEL WITH EMBEDDED TOPBAR */}
-      <div className="flex flex-1 flex-col min-w-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      <div className="flex flex-1 flex-col min-w-0 min-h-0 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <Topbar icon={topbarIcon} label={topbarLabel} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {children}
+
+        <main className="relative flex-1 min-w-0 min-h-0 overflow-hidden">
+          <AnimatePresence initial={false} mode="sync" custom={direction}>
+            <motion.div
+              key={transitionKey ?? activeKey}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: "tween", ease: [0.22, 1, 0.36, 1], duration: 0.35 }}
+              className="absolute inset-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </main>
       </div>
     </div>

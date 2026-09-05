@@ -16,7 +16,7 @@ import {
   MapPin,
   GitCompare,
 } from "lucide-react";
-import { PageShell, HeroBanner, cn } from "../../components/layout/Layout";
+import { HeroBanner, cn } from "../../components/layout/Layout";
 
 // ============================================================
 // BACKEND SHAPE -> UI DERIVATION
@@ -485,13 +485,7 @@ export default function SimulationPlan({
   }, [requests]);
 
   return (
-    <PageShell
-      activeKey="recommendation"
-      onNavigate={onNavigate}
-      completedKeys={completedKeys}
-      topbarIcon={Activity}
-      topbarLabel="Simulate & Validate Plan"
-    >
+    <>
       <HeroBanner
         title="Simulate & Validate Plan"
         subtitle="Independently re-checks the optimized plan and reports its real operational impact."
@@ -573,6 +567,6 @@ export default function SimulationPlan({
           <LimitationsPanel limitations={report.limitations} />
         </>
       ) : null}
-    </PageShell>
+    </>
   );
 }
