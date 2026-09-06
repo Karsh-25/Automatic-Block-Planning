@@ -240,7 +240,8 @@ Open the Vite URL displayed in your terminal.
 
 ## 🏠 Landing Page
 
-![TrackSquad Landing Page](screenshots/landing-page.png)
+![TrackSquad Landing Page](<img width="1677" height="952" alt="Screenshot 2026-09-06 234759" src="https://github.com/user-attachments/assets/80ae6c32-30cb-4bd7-8a65-b9edee13b47b" />
+)
 
 ---
 
@@ -322,12 +323,12 @@ Developed as a **Smart India Hackathon (SIH)** project.
 
 ### TrackSquad Team
 
-- Team Member: `Pushkar Mishra`
-- Team Member: `Palak Srivastava`
-- Team Member: `Nandani`
-- Team Member: `Kaif Ansari`
-- Team Member: `Youvraj Singh`
-- Team Member: `Shanu Priya`
+- `Pushkar Mishra`
+- `Palak Srivastava`
+- `Nandani`
+- `Kaif Ansari`
+- `Youvraj Singh`
+- `Shanu Priya`
 
 ---
 
