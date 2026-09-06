@@ -240,50 +240,50 @@ Open the Vite URL displayed in your terminal.
 
 ## 🏠 Landing Page
 
-![TrackSquad Landing Page](<img width="1677" height="952" alt="Screenshot 2026-09-06 234759" src="https://github.com/user-attachments/assets/80ae6c32-30cb-4bd7-8a65-b9edee13b47b" />
-)
+<img width="1677" height="952" alt="Screenshot 2026-09-06 234759" src="https://github.com/user-attachments/assets/80ae6c32-30cb-4bd7-8a65-b9edee13b47b" />
+
 
 ---
 
 ## 📤 Data Upload
 
-![Data Upload](screenshots/data-upload.png)
+<img width="1912" height="950" alt="Screenshot 2026-09-06 235105" src="https://github.com/user-attachments/assets/5a513343-527e-451e-b734-c96bf1670898" />
+
 
 ---
 
 ## 📋 Block Request
 
-![Block Request](screenshots/block-request.png)
+<img width="1910" height="945" alt="Screenshot 2026-09-06 235541" src="https://github.com/user-attachments/assets/6ef5a4f2-e282-4540-9599-5c83f592df0b" />
+
+
 
 ---
 
 ## 🤖 AI Analysis
 
-![AI Analysis](screenshots/ai-analysis.png)
+<img width="1917" height="956" alt="Screenshot 2026-09-06 235616" src="https://github.com/user-attachments/assets/4ef18231-6751-447b-8d87-db3fe144d342" />
+
 
 ---
 
 ## 🧠 Optimized Plan
 
-![Optimized Plan](screenshots/optimized-plan.png)
-
----
-
-## 💡 Explainable Recommendation
-
-![Explainable Recommendation](screenshots/recommendation.png)
+<img width="1917" height="952" alt="Screenshot 2026-09-06 235641" src="https://github.com/user-attachments/assets/79e79ae1-0e4a-48e9-bb57-4589c9fc36b1" />
 
 ---
 
 ## 🧪 Simulation & Validation
 
-![Simulation](screenshots/simulation.png)
+<img width="1917" height="950" alt="Screenshot 2026-09-06 235709" src="https://github.com/user-attachments/assets/8ffde1a0-c01e-4f40-8d90-ec8be3a7f2a2" />
+
 
 ---
 
 ## 📊 Final Plan
 
-![Final Plan](screenshots/final-plan.png)
+<img width="1917" height="952" alt="Screenshot 2026-09-06 235733" src="https://github.com/user-attachments/assets/56728024-38d0-4d81-be45-4b4bc00a9ae6" />
+
 
 ---
 
